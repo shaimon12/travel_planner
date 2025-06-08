@@ -60,6 +60,11 @@ A multi-day travel itinerary generator powered by Large Language Models (LLMs). 
     ├── .gitignore                     # Specifies files/folders to ignore in Git
     └── requirements.txt               # Python dependencies list
 
+## Demo
+
+Below is a screenshot of the Personal Travel Assistant UI:
+
+![Travel Assistant UI](Home.png)
 
 
 ## Author
