@@ -1,4 +1,5 @@
 # === Security (CRITICAL) ===
+.DS_Store
 # Never upload secrets or API keys
 .env
 .streamlit/secrets.toml
