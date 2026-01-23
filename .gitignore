@@ -1,0 +1,26 @@
+# === Security (CRITICAL) ===
+# Never upload secrets or API keys
+.env
+.streamlit/secrets.toml
+*.pem
+secrets.toml
+
+# === Python System Files ===
+__pycache__/
+*.py[cod]
+*$py.class
+
+# === Virtual Environments ===
+# Ignore the huge folder containing libraries
+venv/
+.venv/
+env/
+.env/
+
+# === Mac OS System Files ===
+.DS_Store
+
+# === Streamlit ===
+# Ignore local development cache
+.streamlit/
+!.streamlit/config.toml
