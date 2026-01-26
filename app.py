@@ -174,8 +174,8 @@ if submit:
         
         **🔗 LINK FORMATTING (STRICT):**
         For EVERY specific place (Restaurant, Hotel, Park, Museum), you MUST provide a Google Maps Search link in this EXACT format:
-        [Place Name](http://googleusercontent.com/maps.google.com/search?q={destination.replace(' ', '+')}+Place+Name)
-        *Example: [Tokyo Tower](http://googleusercontent.com/maps.google.com/search?q=Tokyo+Japan+Tokyo+Tower)*
+        [Place Name](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+Place+Name)
+        *Example: [Tokyo Tower](https://www.google.com/maps/search/?api=1&query=Tokyo+Japan+Tokyo+Tower)*
 
         **📝 OUTPUT STRUCTURE:**
         
