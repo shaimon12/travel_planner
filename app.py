@@ -118,7 +118,7 @@ with st.sidebar:
             mime="text/markdown"
         )
     
-    # Developer Branding
+# Developer Branding
     st.markdown("### 👨‍💻 Developer")
     st.caption("Built by **Shaimon Rahman**")
     st.markdown(
@@ -127,10 +127,7 @@ with st.sidebar:
             <a href='https://www.linkedin.com/in/shaimonrahman' target='_blank'>
                 <img src='https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin' alt='LinkedIn'>
             </a>
-            <a href='https://github.com/shaimon12' target='_blank'>
-                <img src='https://img.shields.io/badge/GitHub-View_Code-black?style=flat&logo=github' alt='GitHub'>
-            </a>
-        </div>
+            </div>
         """,
         unsafe_allow_html=True
     )
