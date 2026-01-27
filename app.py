@@ -31,7 +31,7 @@ if "current_destination" not in st.session_state:
 # === Function 1: Smart Destination Validator ===
 def validate_destination(user_input):
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash-lite")
         prompt = f"""
         You are a geographic data cleaner.
         User Input: "{user_input}"
@@ -51,7 +51,7 @@ def validate_destination(user_input):
 
 # === Function 2: Main Itinerary Generator ===
 def get_gemini_response(prompt):
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash-lite")
     
     gemini_history = [
         {"role": "user" if msg["role"] == "user" else "model", "parts": [msg["content"]]}
