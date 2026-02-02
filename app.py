@@ -1,7 +1,9 @@
 import streamlit as st
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted
 import os
-from datetime import datetime
+import requests  # <--- Added for Weather API
+from datetime import datetime, date
 
 # === Configuration ===
 st.set_page_config(
@@ -49,27 +51,73 @@ def validate_destination(user_input):
     except Exception:
         return user_input
 
-# === Function 2: Main Itinerary Generator ===
+# === Function 2: Live Weather Fetcher (NEW) ===
+def get_weather_data(city):
+    """Fetches weather averages or forecast from Open-Meteo (Free API)."""
+    try:
+        # 1. Geocode the city
+        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
+        geo_res = requests.get(geo_url).json()
+        
+        if "results" not in geo_res:
+            return "Weather data unavailable."
+
+        lat = geo_res["results"][0]["latitude"]
+        lon = geo_res["results"][0]["longitude"]
+
+        # 2. Get Forecast (Temperature & Rain)
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,precipitation_probability_max&forecast_days=3"
+        weather_res = requests.get(weather_url).json()
+        
+        daily = weather_res.get("daily", {})
+        if not daily:
+            return "Weather data unavailable."
+            
+        summary = f"Typical weather for {city} currently:\n"
+        avg_temp = sum(daily['temperature_2m_max']) / len(daily['temperature_2m_max'])
+        avg_rain = sum(daily['precipitation_probability_max']) / len(daily['precipitation_probability_max'])
+        
+        summary += f"- Average High Temp: {avg_temp:.1f}°C\n"
+        summary += f"- Rain Probability: {avg_rain:.1f}%\n"
+        
+        if avg_rain > 40:
+            summary += "Warning: High chance of rain. Suggest indoor activities."
+        else:
+            summary += "Conditions: Likely dry and good for outdoors."
+            
+        return summary
+    except Exception as e:
+        return f"Weather service error: {str(e)}"
+
+# === Function 3: Main Itinerary Generator ===
 def get_gemini_response(prompt):
-    model = genai.GenerativeModel("gemini-2.5-flash-lite")
-    
-    gemini_history = [
-        {"role": "user" if msg["role"] == "user" else "model", "parts": [msg["content"]]}
-        for msg in st.session_state.messages
-    ]
-    chat = model.start_chat(history=gemini_history)
-    response = chat.send_message(prompt)
-    return response.text
+    try:
+        model = genai.GenerativeModel("gemini-2.5-flash-lite")
+        
+        gemini_history = [
+            {"role": "user" if msg["role"] == "user" else "model", "parts": [msg["content"]]}
+            for msg in st.session_state.messages
+        ]
+        chat = model.start_chat(history=gemini_history)
+        response = chat.send_message(prompt)
+        return response.text
+    except ResourceExhausted:
+        return "⚠️ **Demo Limit Reached:** This AI agent is currently running on Google's Free Tier and has exhausted its daily quota. Please try again tomorrow! (Recruiters: Check the video demo on LinkedIn for the full experience.)"
+    except Exception as e:
+        return f"⚠️ **System Error:** {str(e)}"
 
 # === Sidebar: Advanced Trip Settings ===
 with st.sidebar:
     st.title("🌍 AI Travel Planner")
     st.caption("Your personalized travel concierge.")
     
-    st.header("📝 Trip Details")
+    st.header("Trip Details")
     
     name = st.text_input("Traveler Name", placeholder="e.g. Alex")
     raw_destination = st.text_input("Destination", placeholder="e.g. Kyoto, Japan")
+    
+    # NEW: Date Picker
+    start_date = st.date_input("When do you want to go?", min_value=date.today())
     
     col1, col2 = st.columns(2)
     duration = col1.number_input("Days", 1, 30, 3)
@@ -86,7 +134,7 @@ with st.sidebar:
         people = st.slider("Group Size", 2, 10, 4)
         group_info += f" ({people} people)"
 
-    st.subheader("🎨 Preferences")
+    st.subheader("Preferences")
     interests = st.multiselect(
         "Interests",
         ["History 🏛️", "Nature 🌳", "Food 🍜", "Adventure 🧗", "Shopping 🛍️", "Art 🎨", "Nightlife 🍹"]
@@ -100,7 +148,7 @@ with st.sidebar:
         if dietary_list:
             dietary_requirements = ", ".join(dietary_list)
 
-    submit = st.button("🚀 Plan My Trip", type="primary")
+    submit = st.button("Plan My Trip", type="primary")
     
     # === Sidebar: Download & Branding ===
     st.markdown("---")
@@ -109,16 +157,17 @@ with st.sidebar:
     if len(st.session_state.messages) > 1:
         st.subheader("📥 Save Your Plan")
         last_msg = st.session_state.messages[-1]["content"]
-        safe_filename = f"Itinerary_{st.session_state.current_destination}.md"
         
-        st.download_button(
-            label="📄 Download Itinerary",
-            data=last_msg,
-            file_name=safe_filename,
-            mime="text/markdown"
-        )
+        if isinstance(last_msg, str):
+            safe_filename = f"Itinerary_{st.session_state.current_destination}.md"
+            st.download_button(
+                label="📄 Download Itinerary",
+                data=last_msg,
+                file_name=safe_filename,
+                mime="text/markdown"
+            )
     
-# Developer Branding
+    # Developer Branding
     st.markdown("### 👨‍💻 Developer")
     st.caption("Built by **Shaimon Rahman**")
     st.markdown(
@@ -153,51 +202,62 @@ if submit:
         if not interests:
             interests = ["General Sightseeing", "Local Culture"]
 
-        # Step 3: Advanced Prompt Engineering
-        current_month = datetime.now().strftime("%B")
+        # Step 3: Fetch Live Weather (THE NEW PART)
+        with st.spinner("☁️ Checking live weather conditions..."):
+            weather_report = get_weather_data(destination)
+
+        # Step 4: Advanced Prompt Engineering
+        month_name = start_date.strftime("%B")
         system_prompt = f"""
         **⛔ SCOPE & CHARACTER (CRITICAL):**
         1. You are a **Travel Concierge**, NOT a general AI assistant.
         2. If the user asks for code, creative writing, math, or general life advice, you MUST politely refuse.
            *Example Refusal:* "I specialize only in travel planning. Let's focus on your trip to {destination}!"
         3. STAY IN CHARACTER. Do not mention that you are an AI model.
+        
         **TASK:**
         Act as an award-winning travel designer.
-        Create a **highly logical, logistical, and personalized** {duration}-day itinerary for {name} visiting {destination} in {current_month}.
+        Create a **highly logical, logistical, and personalized** {duration}-day itinerary for {name} visiting {destination} starting on {start_date}.
+        
+        **CRITICAL DATA INJECTION (LIVE WEATHER):**
+        I have fetched the real weather forecast for this location:
+        "{weather_report}"
+        
+        **INSTRUCTION:** - Use this weather data to determine if the trip should be Indoor-focused or Outdoor-focused.
+        - If the rain probability is high (>40%), prioritize museums, malls, and covered areas.
         
         **🚦 CORE CONSTRAINTS (MUST FOLLOW):**
         1. **Budget:** {budget} (Be strictly realistic with restaurant/activity choices).
         2. **Travel Group:** {group_info} (Adjust pace and activity types accordingly).
-        3. **Dietary:** {dietary_requirements} (CRITICAL: Only suggest compatible places. If none, suggest safe alternatives).
-        4. **Geography:** Group activities by neighborhood to minimize travel time. Don't zigzag across the city.
+        3. **Dietary:** {dietary_requirements} (CRITICAL: Only suggest compatible places).
+        4. **Geography:** Group activities by neighborhood to minimize travel time.
         
         **✨ THE EXPERIENCE:**
         - **Interests:** Focus heavily on {', '.join(interests)}.
         - **Pacing:** Morning activity -> Lunch -> Afternoon activity -> Dinner -> Evening vibe.
         
         **🔗 LINK FORMATTING (STRICT):**
-        For EVERY specific place (Restaurant, Hotel, Park, Museum), you MUST provide a Google Maps Search link in this EXACT format:
+        For EVERY specific place (Restaurant, Hotel, Park, Museum), you MUST provide a Google Maps Search link using this EXACT format:
         [Place Name](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+Place+Name)
-        *Example: [Tokyo Tower](https://www.google.com/maps/search/?api=1&query=Tokyo+Japan+Tokyo+Tower)*
-
+        
         **📝 OUTPUT STRUCTURE:**
         
         ## 📅 {duration}-Day Itinerary: {destination}
         
-        ### 🎒 Smart Packing List ({current_month})
-        * [Essential 1]
-        * [Essential 2]
+        ### 🎒 Smart Packing List ({month_name} Weather: {weather_report.splitlines()[0] if 'Currently' in weather_report else 'Checked'})
+        * [Essential 1 based on live weather]
+        * [Essential 2 based on live weather]
         * [Essential 3]
 
         ---
         
         ### Day 1: [Catchy Theme Name]
-        * **Morning:** [Activity Name](Link) - 2 sentence description focusing on why it fits the interest.
-        * **Lunch:** [Restaurant Name](Link) - Cuisine type & price range. Why it fits the budget.
-        * **Afternoon:** [Activity Name](Link) - 2 sentence description.
-        * **Dinner:** [Restaurant Name](Link) - Ambience check (Romantic? Lively? Family-friendly?).
-        * **🌙 Evening:** [Activity/Bar/Walk](Link) - A way to wind down.
-        * **💡 Local Secret:** A specific tip (e.g., "Ask for the off-menu sauce" or "Best view is from the 3rd floor").
+        * **Morning:** [Activity Name](Link) - Description.
+        * **Lunch:** [Restaurant Name](Link) - Cuisine & Price.
+        * **Afternoon:** [Activity Name](Link) - Description.
+        * **Dinner:** [Restaurant Name](Link) - Ambience.
+        * **🌙 Evening:** [Activity/Bar/Walk](Link) - Wind down.
+        * **💡 Local Secret:** A specific tip.
 
         (Repeat for all days)
         """
@@ -205,12 +265,9 @@ if submit:
         st.session_state.messages = [{"role": "user", "content": system_prompt}]
 
         with st.spinner(f"Designing the perfect {budget} trip to {destination}..."):
-            try:
-                response_text = get_gemini_response(system_prompt)
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
+            response_text = get_gemini_response(system_prompt)
+            st.session_state.messages.append({"role": "assistant", "content": response_text})
+            st.rerun()
 
 # === Chat & Results Interface ===
 st.title("🌍 AI Travel Planner Pro")
@@ -239,7 +296,7 @@ st.markdown(
     """
     <div style='text-align: center; color: grey;'>
         <p>Copyright © 2026 Shaimon Rahman. All rights reserved.</p>
-        <p>Powered by Google Gemini 2.5 Flash</p>
+        <p>Powered by Google Gemini 2.5 Flash & Open-Meteo API</p>
     </div>
     """, 
     unsafe_allow_html=True
