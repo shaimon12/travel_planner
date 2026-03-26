@@ -57,9 +57,11 @@ def get_weather_data(city):
     try:
         # 1. Geocode the city
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
-        geo_res = requests.get(geo_url).json()
+        # ADDED: timeout=5 to prevent the AWS server from hanging indefinitely
+        geo_res = requests.get(geo_url, timeout=5).json()
         
-        if "results" not in geo_res:
+        # UPDATED: .get() safely checks if 'results' exists AND if the list is empty
+        if not geo_res.get("results"):
             return "Weather data unavailable."
 
         lat = geo_res["results"][0]["latitude"]
@@ -67,7 +69,8 @@ def get_weather_data(city):
 
         # 2. Get Forecast (Temperature & Rain)
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,precipitation_probability_max&forecast_days=3"
-        weather_res = requests.get(weather_url).json()
+        # ADDED: timeout=5 here as well
+        weather_res = requests.get(weather_url, timeout=5).json()
         
         daily = weather_res.get("daily", {})
         if not daily:
