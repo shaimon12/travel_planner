@@ -273,7 +273,7 @@ if submit:
             st.rerun()
 
 # === Chat & Results Interface ===
-st.title("🌍 AI Travel Planner Pro")
+st.title("🌍 AI Travel Planner")
 
 for message in st.session_state.messages:
     if message == st.session_state.messages[0]:
