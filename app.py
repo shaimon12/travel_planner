@@ -116,44 +116,42 @@ with st.sidebar:
     
     st.header("Trip Details")
     
-    name = st.text_input("Traveler Name", placeholder="e.g. Alex")
-    raw_destination = st.text_input("Destination", placeholder="e.g. Kyoto, Japan")
-    
-    # NEW: Date Picker
-    start_date = st.date_input("When do you want to go?", min_value=date.today())
-    
-    col1, col2 = st.columns(2)
-    duration = col1.number_input("Days", 1, 30, 3)
-    budget = col2.selectbox("Budget", ["Shoestring", "Moderate", "Luxury"])
-    
-    travel_type = st.selectbox("Travel Style", ["Solo", "Couple", "Family", "Friends"])
-    
-    group_info = f"Traveling {travel_type}"
-    if travel_type == "Family":
-        adults = st.slider("Adults", 1, 5, 2)
-        kids = st.slider("Kids", 0, 5, 1)
-        group_info += f" with {adults} adults and {kids} children"
-    elif travel_type == "Friends":
-        people = st.slider("Group Size", 2, 10, 4)
-        group_info += f" ({people} people)"
+    # 1. Wrap all inputs inside a form to prevent mobile sidebar collapse
+    with st.form("trip_settings_form"):
+        name = st.text_input("Traveler Name", placeholder="e.g. Alex")
+        raw_destination = st.text_input("Destination", placeholder="e.g. Kyoto, Japan")
+        
+        start_date = st.date_input("When do you want to go?", min_value=date.today())
+        
+        col1, col2 = st.columns(2)
+        duration = col1.number_input("Days", 1, 30, 3)
+        budget = col2.selectbox("Budget", ["Shoestring", "Moderate", "Luxury"])
+        
+        travel_type = st.selectbox("Travel Style", ["Solo", "Couple", "Family", "Friends"])
+        
+        # Form Fix: Made group size a single, unconditional input since dynamic sliders don't update mid-fill
+        group_size = st.number_input("Total Number of Travelers", min_value=1, max_value=20, value=1)
+        
+        st.subheader("Preferences")
+        interests = st.multiselect(
+            "Interests",
+            ["History 🏛️", "Nature 🌳", "Food 🍜", "Adventure 🧗", "Shopping 🛍️", "Art 🎨", "Nightlife 🍹"]
+        )
+        
+        # Form Fix: Dietary restrictions are now always visible to accommodate the form structure
+        dietary_list = st.multiselect(
+            "Dietary Restrictions (Optional)", 
+            ["Vegetarian", "Vegan", "Halal", "Gluten-Free", "Kosher", "Seafood Allergy"]
+        )
+        
+        # 2. Change the standard button to a form submit button
+        submit = st.form_submit_button("Plan My Trip", type="primary")
 
-    st.subheader("Preferences")
-    interests = st.multiselect(
-        "Interests",
-        ["History 🏛️", "Nature 🌳", "Food 🍜", "Adventure 🧗", "Shopping 🛍️", "Art 🎨", "Nightlife 🍹"]
-    )
-    
-    dietary_requirements = "None"
-    if "Food 🍜" in interests:
-        st.info("🍽️ Since you like food, let's refine the menu:")
-        dietary_list = st.multiselect("Dietary Restrictions", 
-                                      ["Vegetarian", "Vegan", "Halal", "Gluten-Free", "Kosher", "Seafood Allergy"])
-        if dietary_list:
-            dietary_requirements = ", ".join(dietary_list)
+    # Format the prompt injection variables AFTER the form is submitted
+    group_info = f"Traveling {travel_type} ({group_size} people)"
+    dietary_requirements = ", ".join(dietary_list) if dietary_list else "None"
 
-    submit = st.button("Plan My Trip", type="primary")
-    
-    # === Sidebar: Download & Branding ===
+    # === Sidebar: Download & Branding (Kept OUTSIDE the form) ===
     st.markdown("---")
     
     # Download Button (Visible only after generation)
@@ -179,7 +177,7 @@ with st.sidebar:
             <a href='https://www.linkedin.com/in/shaimonrahman' target='_blank'>
                 <img src='https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin' alt='LinkedIn'>
             </a>
-            </div>
+        </div>
         """,
         unsafe_allow_html=True
     )
