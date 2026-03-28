@@ -181,6 +181,13 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+# === Main Interface ===
+st.title("🌍 AI Travel Planner")
+
+# NEW: Show a friendly welcome message ONLY when the app first loads
+if len(st.session_state.messages) == 0:
+    st.info("👈 Fill out your trip details in the sidebar and click **Plan My Trip** to get started!")
+
 # === Main Logic ===
 if submit:
     # 1. Validate the text-based date before proceeding
@@ -284,7 +291,6 @@ if submit:
             st.rerun()
 
 # === Chat & Results Interface ===
-st.title("🌍 AI Travel Planner")
 
 for message in st.session_state.messages:
     if message == st.session_state.messages[0]:
