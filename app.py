@@ -121,7 +121,10 @@ with st.sidebar:
         name = st.text_input("Traveler Name", placeholder="e.g. Alex")
         raw_destination = st.text_input("Destination", placeholder="e.g. Kyoto, Japan")
         
-        start_date = st.date_input("When do you want to go?", min_value=date.today())
+        # THE FIX: Replace st.date_input with a standard text input
+        # This prevents the overlay calendar from triggering the mobile sidebar collapse
+        default_date = date.today().strftime("%Y-%m-%d")
+        start_date_str = st.text_input("Start Date (YYYY-MM-DD)", value=default_date)
         
         col1, col2 = st.columns(2)
         duration = col1.number_input("Days", 1, 30, 3)
@@ -146,10 +149,6 @@ with st.sidebar:
         
         # 2. Change the standard button to a form submit button
         submit = st.form_submit_button("Plan My Trip", type="primary")
-
-    # Format the prompt injection variables AFTER the form is submitted
-    group_info = f"Traveling {travel_type} ({group_size} people)"
-    dietary_requirements = ", ".join(dietary_list) if dietary_list else "None"
 
     # === Sidebar: Download & Branding (Kept OUTSIDE the form) ===
     st.markdown("---")
@@ -184,6 +183,20 @@ with st.sidebar:
 
 # === Main Logic ===
 if submit:
+    # 1. Validate the text-based date before proceeding
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        if start_date < date.today():
+            st.error("⚠️ The start date cannot be in the past. Please enter a valid date.")
+            st.stop()
+    except ValueError:
+        st.error("⚠️ Please enter a valid date in the format YYYY-MM-DD.")
+        st.stop()
+
+    # 2. Format the prompt injection variables AFTER the form is successfully submitted
+    group_info = f"Traveling {travel_type} ({group_size} people)"
+    dietary_requirements = ", ".join(dietary_list) if dietary_list else "None"
+
     if not name or not raw_destination:
         st.error("⚠️ Please enter both your Name and a Destination to proceed.")
     else:
