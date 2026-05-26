@@ -41,7 +41,7 @@ st.set_page_config(
     page_title="AI Travel Planner | Smart Trip Itineraries",
     page_icon="🌍",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto"
 )
 
 # === Secure API Key Handling ===
