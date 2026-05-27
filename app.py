@@ -188,7 +188,7 @@ with st.sidebar:
     st.markdown("### 🗂️ Chat History")
     
     for session_name in list(st.session_state.chat_sessions.keys()):
-        col1, col2 = st.columns([0.85, 0.15])
+        col1, col2 = st.columns([0.8, 0.2])
         
         is_active = session_name == st.session_state.current_session
         button_type = "primary" if is_active else "secondary"
