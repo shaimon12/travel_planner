@@ -304,7 +304,14 @@ if submit:
         st.error("⚠️ Please enter a valid date in the format YYYY-MM-DD.")
         st.stop()
 
-    group_info = f"Traveling {travel_type} ({group_size} people)"
+    # Backend Auto-Correction (No UI Reloads)
+    corrected_size = group_size
+    if travel_type == "Couple" and corrected_size < 2:
+        corrected_size = 2
+    elif travel_type in ["Family", "Friends"] and corrected_size < 3:
+        corrected_size = 3
+
+    group_info = f"Traveling {travel_type} ({corrected_size} people)"
     dietary_requirements = ", ".join(dietary_list) if dietary_list else "None"
 
     if not name or not raw_destination:
