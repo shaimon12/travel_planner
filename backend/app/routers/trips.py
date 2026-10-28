@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -13,8 +13,7 @@ from app.schemas.trip import (
 )
 from app.schemas.message import ChatRequest, ChatResponse, MessageResponse
 from app.schemas.analytics import DestinationAnalyticsResponse
-from app.services.validator import validate_destination
-from app.services.agent import generate_initial_itinerary_and_analytics
+from app.services.agent import plan_new_trip, handle_trip_chat
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
@@ -22,17 +21,17 @@ router = APIRouter(prefix="/trips", tags=["Trips"])
 def create_trip(trip_in: TripCreate, db: Session = Depends(get_db)):
     """
     Creates a new trip session.
-    Validates the destination, persists parameters, generates initial itinerary and analytics.
+    Routes parameters through LangGraph workflow:
+      Node 1: Destination Validator & Weather Fetcher
+      Node 2: Itinerary Generator (strictly formatted markdown)
+      Node 3: Analytics Generator (strictly structured JSON)
+    Persists trip session, initial itinerary message, and analytics data.
     """
-    cleaned_destination = validate_destination(trip_in.raw_destination)
-    if not cleaned_destination:
+    if not trip_in.traveler_name or not trip_in.raw_destination:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Could not validate destination: '{trip_in.raw_destination}'. Please check spelling."
+            detail="Traveler name and destination are required."
         )
-
-    # Title defaults to destination or provided title
-    title = trip_in.title or f"Trip to {cleaned_destination}"
 
     # Auto-adjust group size logic matching prototype
     corrected_size = trip_in.group_size
@@ -41,11 +40,34 @@ def create_trip(trip_in: TripCreate, db: Session = Depends(get_db)):
     elif trip_in.travel_type in ["Family", "Friends"] and corrected_size < 3:
         corrected_size = 3
 
+    # Execute LangGraph Multi-Agent Workflow
+    agent_output = plan_new_trip({
+        "traveler_name": trip_in.traveler_name,
+        "raw_destination": trip_in.raw_destination,
+        "start_date": trip_in.start_date,
+        "duration": trip_in.duration,
+        "budget": trip_in.budget,
+        "travel_type": trip_in.travel_type,
+        "group_size": corrected_size,
+        "interests": trip_in.interests or ["General Sightseeing", "Local Culture"],
+        "dietary_restrictions": trip_in.dietary_restrictions or [],
+    })
+
+    if agent_output.get("error"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=agent_output["error"]
+        )
+
+    destination_name = agent_output.get("validated_destination") or trip_in.raw_destination
+    title = trip_in.title if trip_in.title and trip_in.title != "My Trip" else f"Trip to {destination_name}"
+
+    # 1. Create Trip Session entity
     trip = TripSession(
         title=title,
         traveler_name=trip_in.traveler_name,
         raw_destination=trip_in.raw_destination,
-        destination=cleaned_destination,
+        destination=destination_name,
         start_date=trip_in.start_date,
         duration=trip_in.duration,
         budget=trip_in.budget,
@@ -59,38 +81,30 @@ def create_trip(trip_in: TripCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(trip)
 
-    # Generate initial itinerary and analytics via agent service
-    agent_output = generate_initial_itinerary_and_analytics({
-        "destination": trip.destination,
-        "duration": trip.duration,
-        "budget": trip.budget,
-        "traveler_name": trip.traveler_name,
-        "travel_type": trip.travel_type,
-        "group_size": trip.group_size,
-        "interests": trip.interests,
-        "dietary_restrictions": trip.dietary_restrictions,
-    })
-
-    # Save initial assistant message (itinerary)
+    # 2. Persist initial generated itinerary as assistant message
+    itinerary_content = agent_output.get("itinerary", "")
     initial_message = Message(
         trip_id=trip.id,
         role="assistant",
-        content=agent_output["itinerary"],
-        meta={"type": "initial_itinerary"}
+        content=itinerary_content,
+        meta={
+            "type": "initial_itinerary",
+            "weather_report": agent_output.get("weather_report")
+        }
     )
     db.add(initial_message)
 
-    # Save analytics
-    analytics_data = agent_output.get("analytics", {})
+    # 3. Persist destination analytics
+    analytics_dict = agent_output.get("analytics") or {}
     analytics = DestinationAnalytics(
         trip_id=trip.id,
-        destination=trip.destination,
-        visitors=analytics_data.get("visitors"),
-        growth=analytics_data.get("growth"),
-        satisfaction=analytics_data.get("satisfaction"),
-        top_demographic=analytics_data.get("top_demographic"),
-        best_month=analytics_data.get("best_month"),
-        raw_data=analytics_data.get("raw_data")
+        destination=destination_name,
+        visitors=analytics_dict.get("visitors", "N/A"),
+        growth=analytics_dict.get("growth", "N/A"),
+        satisfaction=analytics_dict.get("satisfaction", "N/A"),
+        top_demographic=analytics_dict.get("top_demographic", "N/A"),
+        best_month=analytics_dict.get("best_month", "N/A"),
+        raw_data=analytics_dict.get("raw_data") or analytics_dict
     )
     db.add(analytics)
 
@@ -106,7 +120,9 @@ def list_trips(db: Session = Depends(get_db)):
 
 @router.get("/{trip_id}", response_model=TripSessionDetailResponse)
 def get_trip(trip_id: str, db: Session = Depends(get_db)):
-    """Retrieves full trip session details including chat history and analytics."""
+    """
+    Fetches full trip session details including chat history and destination analytics.
+    """
     trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
     if not trip:
         raise HTTPException(
@@ -115,9 +131,83 @@ def get_trip(trip_id: str, db: Session = Depends(get_db)):
         )
     return trip
 
+@router.post("/{trip_id}/chat", response_model=ChatResponse)
+def chat_with_trip(trip_id: str, chat_in: ChatRequest, db: Session = Depends(get_db)):
+    """
+    Accepts user follow-up questions, routes through LangGraph workflow with conversation
+    context, persists user message and AI response, and returns response payload.
+    """
+    trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
+    if not trip:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Trip session '{trip_id}' not found."
+        )
+
+    clean_user_message = chat_in.message.strip()
+    if not clean_user_message:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty."
+        )
+
+    # 1. Persist user message to database
+    user_msg = Message(
+        trip_id=trip.id,
+        role="user",
+        content=clean_user_message
+    )
+    db.add(user_msg)
+    db.commit()
+
+    # 2. Extract conversation history for agent context
+    past_messages = [
+        {"role": m.role, "content": m.content}
+        for m in trip.messages
+        if m.role in ["user", "assistant"]
+    ]
+
+    # 3. Route through LangGraph conversational workflow
+    chat_result = handle_trip_chat(
+        trip_params={
+            "id": trip.id,
+            "traveler_name": trip.traveler_name,
+            "destination": trip.destination,
+            "raw_destination": trip.raw_destination,
+            "start_date": str(trip.start_date),
+            "duration": trip.duration,
+            "budget": trip.budget,
+            "travel_type": trip.travel_type,
+            "group_size": trip.group_size,
+            "interests": trip.interests,
+            "dietary_restrictions": trip.dietary_restrictions,
+        },
+        chat_history=past_messages,
+        user_message=clean_user_message
+    )
+
+    ai_reply = chat_result.get("response") or "I apologize, I could not generate a response. Please try again."
+
+    # 4. Persist AI response message to database
+    assistant_msg = Message(
+        trip_id=trip.id,
+        role="assistant",
+        content=ai_reply,
+        meta={"type": "chat_followup"}
+    )
+    db.add(assistant_msg)
+    db.commit()
+    db.refresh(assistant_msg)
+
+    return ChatResponse(
+        response=ai_reply,
+        message=MessageResponse.model_validate(assistant_msg),
+        analytics=DestinationAnalyticsResponse.model_validate(trip.analytics) if trip.analytics else None
+    )
+
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_trip(trip_id: str, db: Session = Depends(get_db)):
-    """Deletes a trip session and cascades to all associated messages and analytics."""
+    """Deletes a trip session, cascading removal of associated messages and analytics."""
     trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
     if not trip:
         raise HTTPException(
@@ -128,56 +218,9 @@ def delete_trip(trip_id: str, db: Session = Depends(get_db)):
     db.commit()
     return None
 
-@router.post("/{trip_id}/chat", response_model=ChatResponse)
-def chat_with_trip(trip_id: str, chat_in: ChatRequest, db: Session = Depends(get_db)):
-    """
-    Handles user follow-up questions for a trip session.
-    Routes to agent orchestrator and persists conversation history.
-    """
-    trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
-    if not trip:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Trip session '{trip_id}' not found."
-        )
-
-    # Persist user message
-    user_msg = Message(
-        trip_id=trip.id,
-        role="user",
-        content=chat_in.message
-    )
-    db.add(user_msg)
-    db.commit()
-
-    # In Phase 2, this calls LangGraph runner with full conversational state
-    # Provide structured assistant response
-    dest = trip.destination or "your destination"
-    assistant_content = (
-        f"Regarding your question about **{dest}**: '{chat_in.message}'\n\n"
-        f"Here are my tailored recommendations for your {trip.budget.lower()} trip! "
-        f"You can explore [{dest} City Center](https://www.google.com/maps/search/?api=1&query={dest.replace(' ', '+')}+City+Center) "
-        f"which aligns with your interests in {', '.join(trip.interests) if trip.interests else 'local culture'}."
-    )
-
-    assistant_msg = Message(
-        trip_id=trip.id,
-        role="assistant",
-        content=assistant_content
-    )
-    db.add(assistant_msg)
-    db.commit()
-    db.refresh(assistant_msg)
-
-    return ChatResponse(
-        response=assistant_content,
-        message=MessageResponse.model_validate(assistant_msg),
-        analytics=DestinationAnalyticsResponse.model_validate(trip.analytics) if trip.analytics else None
-    )
-
 @router.get("/{trip_id}/analytics", response_model=DestinationAnalyticsResponse)
 def get_trip_analytics(trip_id: str, db: Session = Depends(get_db)):
-    """Retrieves destination tourism analytics for a specific trip session."""
+    """Fetches destination analytics metrics for a specific trip session."""
     trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
     if not trip:
         raise HTTPException(
@@ -187,6 +230,6 @@ def get_trip_analytics(trip_id: str, db: Session = Depends(get_db)):
     if not trip.analytics:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No analytics data generated yet for trip '{trip_id}'."
+            detail=f"No analytics data generated for trip '{trip_id}'."
         )
     return trip.analytics

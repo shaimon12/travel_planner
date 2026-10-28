@@ -7,3 +7,4 @@ api_router.include_router(health_router)
 api_router.include_router(trips_router)
 
 __all__ = ["api_router"]
+

@@ -1,51 +1,75 @@
 """
-Multi-Agent Orchestration Service.
-In Phase 2, this module hosts the LangGraph StateGraph with Destination Validator,
-Weather Fetcher, Itinerary Generator, and Analytics Generator nodes.
+Multi-Agent Orchestration Service for AI Travel Planner Pro.
+Provides high-level APIs powered by the LangGraph 3-node agent workflow.
 """
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
+from app.services.graph import run_agent_workflow, AgentState
 
-def generate_initial_itinerary_and_analytics(
-    trip_data: Dict[str, Any]
-) -> Dict[str, Any]:
+def plan_new_trip(trip_params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Placeholder orchestration service for Phase 1.
-    Full LangGraph 3-node agent workflow will be wired in Phase 2.
+    Executes initial trip planning across:
+    1. Node 1: Destination Validator & Weather Fetcher
+    2. Node 2: Itinerary Generator (strict markdown)
+    3. Node 3: Analytics Generator (strict JSON)
     """
-    destination = trip_data.get("destination", "Destination")
-    duration = trip_data.get("duration", 3)
-    budget = trip_data.get("budget", "Moderate")
-
-    markdown_itinerary = f"""## 📅 {duration}-Day Itinerary: {destination}
-
-### 🎒 Smart Packing List
-* Comfortable walking shoes
-* Lightweight rain jacket
-* Portable charger
-
----
-### Day 1: City Highlights & Culture
-* **Morning:** [{destination} City Center](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+City+Center) - Explore historical landmarks.
-* **Lunch:** [Local Bistro](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+Local+Bistro) - Authentic regional cuisine.
-* **Afternoon:** [National Museum](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+National+Museum) - Cultural exhibits.
-* **Dinner:** [Old Town Eatery](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+Old+Town+Eatery) - Local flavors.
-* **🌙 Evening:** Scenic promenade stroll.
-* **💡 Local Secret:** Visit early to beat the crowds.
-"""
-
-    analytics_dict = {
-        "visitors": "3.5M",
-        "growth": "+6%",
-        "satisfaction": "4.8/5",
-        "top_demographic": "Couples & Cultural Explorers",
-        "best_month": "October",
-        "raw_data": {
-            "source": "Initial Tourism Estimate",
-            "destination": destination
-        }
+    initial_state: AgentState = {
+        "mode": "initial_plan",
+        "trip_id": trip_params.get("id"),
+        "traveler_name": trip_params.get("traveler_name", "Traveler"),
+        "raw_destination": trip_params.get("raw_destination", ""),
+        "destination": trip_params.get("destination", ""),
+        "start_date": str(trip_params.get("start_date", "")),
+        "duration": trip_params.get("duration", 3),
+        "budget": trip_params.get("budget", "Moderate"),
+        "travel_type": trip_params.get("travel_type", "Solo"),
+        "group_size": trip_params.get("group_size", 1),
+        "interests": trip_params.get("interests", []),
+        "dietary_restrictions": trip_params.get("dietary_restrictions", []),
+        "messages": [],
+        "user_input": "",
     }
 
+    result = run_agent_workflow(initial_state)
+
     return {
-        "itinerary": markdown_itinerary,
-        "analytics": analytics_dict
+        "validated_destination": result.get("destination"),
+        "weather_report": result.get("weather_report"),
+        "itinerary": result.get("itinerary_output") or result.get("final_response"),
+        "analytics": result.get("analytics_output"),
+        "error": result.get("error")
+    }
+
+def handle_trip_chat(
+    trip_params: Dict[str, Any],
+    chat_history: List[Dict[str, str]],
+    user_message: str
+) -> Dict[str, Any]:
+    """
+    Handles conversational follow-ups for an existing trip:
+    Routes through Node 2 (Itinerary Generator in Q&A mode) with persistent context and Google Maps rules.
+    """
+    state: AgentState = {
+        "mode": "chat_followup",
+        "trip_id": trip_params.get("id"),
+        "traveler_name": trip_params.get("traveler_name", "Traveler"),
+        "destination": trip_params.get("destination", ""),
+        "raw_destination": trip_params.get("raw_destination", ""),
+        "start_date": str(trip_params.get("start_date", "")),
+        "duration": trip_params.get("duration", 3),
+        "budget": trip_params.get("budget", "Moderate"),
+        "travel_type": trip_params.get("travel_type", "Solo"),
+        "group_size": trip_params.get("group_size", 1),
+        "interests": trip_params.get("interests", []),
+        "dietary_restrictions": trip_params.get("dietary_restrictions", []),
+        "weather_report": trip_params.get("weather_report", ""),
+        "messages": chat_history,
+        "user_input": user_message,
+    }
+
+    result = run_agent_workflow(state)
+
+    return {
+        "response": result.get("final_response", ""),
+        "weather_report": result.get("weather_report"),
+        "error": result.get("error")
     }

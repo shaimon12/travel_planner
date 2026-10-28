@@ -22,3 +22,4 @@ def health_check(db: Session = Depends(get_db)):
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0"
     }
+

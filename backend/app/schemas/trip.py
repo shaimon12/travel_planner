@@ -48,3 +48,4 @@ class TripSessionDetailResponse(TripSessionResponse):
     analytics: Optional[DestinationAnalyticsResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+

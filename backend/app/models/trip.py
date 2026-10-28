@@ -50,3 +50,4 @@ class TripSession(Base):
 
     def __repr__(self) -> str:
         return f"<TripSession id={self.id} title={self.title} destination={self.destination}>"
+

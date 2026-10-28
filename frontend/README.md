@@ -13,3 +13,4 @@ This client will be fully scaffolded and built during Phase 3 with:
 - Persistent sidebar for trip history and session management
 - Dual-view interface: Interactive Itinerary (with auto-scrolling chat) vs. Destination Analytics & Map
 - Real-time Markdown rendering with geo-linked places
+

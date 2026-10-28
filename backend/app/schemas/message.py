@@ -29,3 +29,4 @@ class ChatResponse(BaseModel):
     response: str
     message: MessageResponse
     analytics: Optional[Any] = None
+

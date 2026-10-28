@@ -29,3 +29,4 @@ class DestinationAnalytics(Base):
 
     def __repr__(self) -> str:
         return f"<DestinationAnalytics id={self.id} destination={self.destination}>"
+

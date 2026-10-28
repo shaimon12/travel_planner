@@ -25,3 +25,4 @@ class Message(Base):
 
     def __repr__(self) -> str:
         return f"<Message id={self.id} trip_id={self.trip_id} role={self.role}>"
+

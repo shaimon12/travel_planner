@@ -42,3 +42,4 @@ def init_db():
     # Import all models to register them in Base.metadata
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
