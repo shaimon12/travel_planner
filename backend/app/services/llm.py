@@ -128,3 +128,4 @@ def invoke_gemini_json(prompt: str) -> Dict[str, Any]:
             "top_demographic": "Families & Solo Explorers",
             "best_month": "October"
         }
+
