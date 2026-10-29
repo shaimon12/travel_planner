@@ -9,7 +9,12 @@ class Settings(BaseSettings):
     
     # Database URL: default to SQLite for seamless local dev, easily overridden by PostgreSQL
     DATABASE_URL: str = "sqlite:///./travel_planner.db"
-    
+
+    # JWT Authentication & Security
+    SECRET_KEY: str = "travel-planner-super-secret-jwt-key-2026-production-ready"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
     # Google Gemini AI settings
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"

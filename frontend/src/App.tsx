@@ -3,40 +3,54 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ChatInterface } from './components/ChatInterface';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
+import { Login } from './components/auth/Login';
+import { Register } from './components/auth/Register';
 import { apiService } from './services/api';
+import { useAuth } from './context/AuthContext';
 import { TripSession, TripDetail, TripCreateInput, Message } from './types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Compass } from 'lucide-react';
 
 export const App: React.FC = () => {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
   const [trips, setTrips] = useState<TripSession[]>([]);
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [activeTrip, setActiveTrip] = useState<TripDetail | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'analytics'>('chat');
-  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
-  // Load trip sessions on mount
+  // Load trips when authenticated
   useEffect(() => {
-    loadTrips();
-  }, []);
+    if (isAuthenticated) {
+      loadTrips();
+    } else {
+      setTrips([]);
+      setActiveTripId(null);
+      setActiveTrip(null);
+    }
+  }, [isAuthenticated]);
 
-  // When activeTripId changes, fetch full trip details (messages + analytics)
+  // When activeTripId changes, fetch full trip details
   useEffect(() => {
-    if (activeTripId) {
+    if (activeTripId && isAuthenticated) {
       loadTripDetails(activeTripId);
     } else {
       setActiveTrip(null);
     }
-  }, [activeTripId]);
+  }, [activeTripId, isAuthenticated]);
 
   const loadTrips = async () => {
     try {
       setIsLoadingTrips(true);
       const list = await apiService.fetchTrips();
       setTrips(list);
-      if (list.length > 0 && !activeTripId) {
+      if (list.length > 0) {
         setActiveTripId(list[0].id);
+      } else {
+        setActiveTripId(null);
       }
     } catch (err) {
       console.error('Failed to load trips:', err);
@@ -58,7 +72,6 @@ export const App: React.FC = () => {
     try {
       setIsCreatingTrip(true);
       const newTrip = await apiService.createTrip(data);
-      // Prepend newly created trip
       setTrips(prev => [newTrip, ...prev]);
       setActiveTripId(newTrip.id);
       setActiveTrip(newTrip);
@@ -105,7 +118,6 @@ export const App: React.FC = () => {
       setIsSendingMessage(true);
       const result = await apiService.sendMessage(activeTripId, content);
 
-      // Replace with confirmed assistant response from LangGraph
       setActiveTrip(prev => {
         if (!prev) return null;
         return {
@@ -116,7 +128,6 @@ export const App: React.FC = () => {
       });
     } catch (err) {
       console.error('Error sending message to LangGraph agent:', err);
-      // Append fallback error notification message
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         trip_id: activeTripId,
@@ -139,7 +150,6 @@ export const App: React.FC = () => {
   const handleDownloadItinerary = () => {
     if (!activeTrip || activeTrip.messages.length === 0) return;
 
-    // Find the latest assistant message containing the itinerary
     const assistantMessages = activeTrip.messages.filter(m => m.role === 'assistant');
     const content =
       assistantMessages.length > 0
@@ -158,6 +168,43 @@ export const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Splash Screen during auth initialization
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+            <Compass className="h-8 w-8 text-indigo-400 animate-spin" />
+          </div>
+          <div className="flex items-center space-x-2 text-xs text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+            <span>Validating authentication session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthenticated Auth Screen (Login / Register)
+  if (!isAuthenticated) {
+    return (
+      <div className="relative flex min-h-screen w-screen items-center justify-center bg-slate-950 p-4 overflow-hidden">
+        {/* Background Ambient Glows */}
+        <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 w-full flex justify-center">
+          {authMode === 'login' ? (
+            <Login onSwitchToRegister={() => setAuthMode('register')} />
+          ) : (
+            <Register onSwitchToLogin={() => setAuthMode('login')} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated Main SaaS Workspace
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
       {/* Persistent Sidebar */}
@@ -183,7 +230,7 @@ export const App: React.FC = () => {
           {isLoadingTrips ? (
             <div className="flex-1 flex items-center justify-center space-x-2 text-slate-400">
               <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
-              <span className="text-sm font-medium">Connecting to Travel Planner API...</span>
+              <span className="text-sm font-medium">Loading your trip itineraries...</span>
             </div>
           ) : activeTab === 'chat' ? (
             <ChatInterface

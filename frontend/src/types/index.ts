@@ -1,3 +1,17 @@
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
 export interface Message {
   id: string;
   trip_id: string;
@@ -67,3 +81,4 @@ export interface ChatResponsePayload {
   message: Message;
   analytics?: DestinationAnalytics;
 }
+

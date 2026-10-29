@@ -1,5 +1,5 @@
 """Pydantic schemas package."""
-from app.schemas.user import UserBase, UserCreate, UserResponse
+from app.schemas.user import UserBase, UserCreate, UserLogin, UserResponse, Token, TokenData
 from app.schemas.analytics import (
     DestinationAnalyticsBase,
     DestinationAnalyticsCreate,
@@ -23,7 +23,10 @@ from app.schemas.trip import (
 __all__ = [
     "UserBase",
     "UserCreate",
+    "UserLogin",
     "UserResponse",
+    "Token",
+    "TokenData",
     "DestinationAnalyticsBase",
     "DestinationAnalyticsCreate",
     "DestinationAnalyticsResponse",

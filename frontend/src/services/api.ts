@@ -5,6 +5,8 @@ import {
   TripCreateInput,
   ChatResponsePayload,
   DestinationAnalytics,
+  User,
+  AuthResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -17,9 +19,63 @@ const apiClient = axios.create({
   timeout: 45000, // accommodate multi-agent LLM reasoning
 });
 
+// Axios Request Interceptor: Attach JWT Bearer Token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('travel_planner_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Axios Response Interceptor: Handle Unauthorized
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Don't clear on login/register attempt failures
+      if (!error.config?.url?.includes('/auth/login') && !error.config?.url?.includes('/auth/register')) {
+        localStorage.removeItem('travel_planner_token');
+        localStorage.removeItem('travel_planner_user');
+        window.dispatchEvent(new Event('auth-unauthorized'));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const apiService = {
+  // ================= Auth Endpoints =================
   /**
-   * Fetches list of all trip planning sessions for sidebar history.
+   * Registers a new tenant user.
+   */
+  async register(data: { email: string; password: string; name?: string }): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/register', data);
+    return response.data;
+  },
+
+  /**
+   * Authenticates user and returns JWT token.
+   */
+  async login(data: { email: string; password: string }): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/login', data);
+    return response.data;
+  },
+
+  /**
+   * Fetches current authenticated user profile.
+   */
+  async getMe(): Promise<User> {
+    const response = await apiClient.get<User>('/auth/me');
+    return response.data;
+  },
+
+  // ================= Trip Endpoints =================
+  /**
+   * Fetches list of all trip planning sessions for the authenticated user.
    */
   async fetchTrips(): Promise<TripSession[]> {
     const response = await apiClient.get<TripSession[]>('/trips');

@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_current_user
+from app.models.user import User
 from app.models.trip import TripSession
 from app.models.message import Message
 from app.models.analytics import DestinationAnalytics
@@ -18,9 +20,13 @@ from app.services.agent import plan_new_trip, handle_trip_chat
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
 @router.post("", response_model=TripSessionDetailResponse, status_code=status.HTTP_201_CREATED)
-def create_trip(trip_in: TripCreate, db: Session = Depends(get_db)):
+def create_trip(
+    trip_in: TripCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
-    Creates a new trip session.
+    Creates a new trip session tied to the authenticated tenant user.
     Routes parameters through LangGraph workflow:
       Node 1: Destination Validator & Weather Fetcher
       Node 2: Itinerary Generator (strictly formatted markdown)
@@ -62,8 +68,9 @@ def create_trip(trip_in: TripCreate, db: Session = Depends(get_db)):
     destination_name = agent_output.get("validated_destination") or trip_in.raw_destination
     title = trip_in.title if trip_in.title and trip_in.title != "My Trip" else f"Trip to {destination_name}"
 
-    # 1. Create Trip Session entity
+    # 1. Create Trip Session entity strictly linked to current authenticated user
     trip = TripSession(
+        user_id=current_user.id,
         title=title,
         traveler_name=trip_in.traveler_name,
         raw_destination=trip_in.raw_destination,
@@ -114,16 +121,35 @@ def create_trip(trip_in: TripCreate, db: Session = Depends(get_db)):
     return trip
 
 @router.get("", response_model=List[TripSessionResponse])
-def list_trips(db: Session = Depends(get_db)):
-    """Lists all trip sessions for persistent sidebar history."""
-    return db.query(TripSession).order_by(TripSession.created_at.desc()).all()
+def list_trips(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Lists all trip sessions belonging exclusively to the authenticated user.
+    """
+    return (
+        db.query(TripSession)
+        .filter(TripSession.user_id == current_user.id)
+        .order_by(TripSession.created_at.desc())
+        .all()
+    )
 
 @router.get("/{trip_id}", response_model=TripSessionDetailResponse)
-def get_trip(trip_id: str, db: Session = Depends(get_db)):
+def get_trip(
+    trip_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Fetches full trip session details including chat history and destination analytics.
+    Enforces user ownership.
     """
-    trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
+    trip = (
+        db.query(TripSession)
+        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
+        .first()
+    )
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -132,12 +158,22 @@ def get_trip(trip_id: str, db: Session = Depends(get_db)):
     return trip
 
 @router.post("/{trip_id}/chat", response_model=ChatResponse)
-def chat_with_trip(trip_id: str, chat_in: ChatRequest, db: Session = Depends(get_db)):
+def chat_with_trip(
+    trip_id: str,
+    chat_in: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Accepts user follow-up questions, routes through LangGraph workflow with conversation
     context, persists user message and AI response, and returns response payload.
+    Enforces user ownership.
     """
-    trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
+    trip = (
+        db.query(TripSession)
+        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
+        .first()
+    )
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -206,9 +242,20 @@ def chat_with_trip(trip_id: str, chat_in: ChatRequest, db: Session = Depends(get
     )
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_trip(trip_id: str, db: Session = Depends(get_db)):
-    """Deletes a trip session, cascading removal of associated messages and analytics."""
-    trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
+def delete_trip(
+    trip_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Deletes a trip session, cascading removal of associated messages and analytics.
+    Enforces user ownership.
+    """
+    trip = (
+        db.query(TripSession)
+        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
+        .first()
+    )
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -219,9 +266,20 @@ def delete_trip(trip_id: str, db: Session = Depends(get_db)):
     return None
 
 @router.get("/{trip_id}/analytics", response_model=DestinationAnalyticsResponse)
-def get_trip_analytics(trip_id: str, db: Session = Depends(get_db)):
-    """Fetches destination analytics metrics for a specific trip session."""
-    trip = db.query(TripSession).filter(TripSession.id == trip_id).first()
+def get_trip_analytics(
+    trip_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Fetches destination analytics metrics for a specific trip session.
+    Enforces user ownership.
+    """
+    trip = (
+        db.query(TripSession)
+        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
+        .first()
+    )
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
