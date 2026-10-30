@@ -1,38 +1,98 @@
-# 🌍 AI Travel Planner Pro
+# 🌍 AI Travel Planner Pro — Enterprise SaaS Platform
 
-### Overview
-A production-grade, personalized travel concierge application built with Streamlit and powered by Google Gemini 2.5 Flash. Designed with a product-first mindset, this tool generates highly logical, budget-aware, and geo-optimized travel itineraries while managing multiple concurrent user sessions and rendering live destination analytics.
-
-### Key Features
-* **Multi-Trip Memory:** Robust session state management allows users to plan, navigate, and save multiple concurrent trip itineraries without losing chat history.
-* **Destination Analytics:** Leverages a structured JSON pipeline via the LLM to generate a real-time dashboard of tourism trends, peak seasons, and demographic data.
-* **Intelligent Routing & Pacing:** Uses advanced prompt engineering to create day-by-day logistical plans, grouping activities by neighborhood to minimize travel time.
-* **Live Weather Integration:** Fetches real-time climate data via the Open-Meteo API to dynamically adjust packing lists and prioritize indoor vs. outdoor activities based on rain probability.
-* **Smart Maps:** Automatically generates precise, deep-linked Google Maps URLs for every suggested restaurant, hotel, and attraction.
-* **Responsive "SaaS" UI:** Features a dynamic view-state controller that seamlessly transitions from a clean, centered landing page form into a fully featured chat and analytics dashboard.
-* **Exportable:** Users can instantly download their complete itinerary as a formatted Markdown file for offline use.
-
-### Tech Stack
-* **Frontend:** Streamlit (with custom HTML/JS injections for responsive mobile auto-scrolling)
-* **AI Model:** Google Gemini 2.5 Flash (google-generativeai)
-* **External APIs:** Open-Meteo (Geocoding & Live Weather)
-* **Deployment:** AWS EC2 (Linux/Ubuntu)
-* **Language:** Python 3.11+
-
-### Installation
-1. **Clone the repo:**
-    git clone https://github.com/shaimon12/travel_planner.git
-    cd travel_planner
-
-2. **Install dependencies:**
-    pip install -r requirements.txt
-
-3. **Set up your API Key:**
-    Create a .streamlit/secrets.toml file or set an environment variable:
-    GEMINI_API_KEY = "your_api_key_here"
-
-4. **Run the application:**
-    streamlit run app.py
+An investor-ready, decoupled full-stack SaaS platform migrating from a Streamlit prototype into a scalable cloud architecture. Powered by **Google Gemini 2.5 Flash**, **LangGraph multi-agent orchestration**, **FastAPI**, **PostgreSQL**, and a modern **React + TypeScript (Tailwind CSS)** frontend.
 
 ---
-**Built by Shaimon Rahman** [![LinkedIn Connect](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/shaimonrahman)
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    Client["React + TypeScript SPA (Vite + Tailwind)"] -->|JWT Bearer REST API| Backend["FastAPI Gateway (Python 3.11+)"]
+    Backend -->|Auth & Tenant Data| DB[("PostgreSQL 15 / SQLAlchemy")]
+    
+    subgraph "LangGraph Multi-Agent Orchestration"
+        Node1["Node 1: Validator & Live Weather (Open-Meteo)"] --> Node2["Node 2: Itinerary Generator (Strict Markdown + Maps)"]
+        Node2 --> Node3["Node 3: Analytics Generator (Strict JSON)"]
+    end
+    
+    Backend --> Node1
+    Node2 -->|Google Gemini 2.5 Flash| Gemini["Google Generative AI"]
+```
+
+### 1. Decoupled Monorepo Structure
+- **`/backend`**: FastAPI REST API with SQLAlchemy ORM, JWT authentication (bcrypt + pyjwt), multi-tenant session isolation, and LangGraph multi-agent state machines.
+- **`/frontend`**: React 18 with TypeScript, Vite, Tailwind CSS, Lucide Icons, and native Markdown rendering with auto-scrolling chat.
+- **`docker-compose.yml`**: Unified single-command orchestration for PostgreSQL, FastAPI, and Nginx-served React.
+
+---
+
+## 🚀 Key Features
+
+* **Multi-Tenant JWT Authentication**: Secure user registration, credential hashing with bcrypt, and token-based tenant isolation.
+* **LangGraph Multi-Agent Orchestration**:
+  - **Node 1 (Validator & Weather)**: Geographic cleaning and live 3-day forecast from Open-Meteo.
+  - **Node 2 (Itinerary Generator)**: Strict markdown itineraries with mandatory Google Maps deep-links for every physical venue.
+  - **Node 3 (Analytics Generator)**: High-speed structured JSON tourism metrics (visitors, YoY growth, demographics, best season).
+* **Dual-View React UI**:
+  - **Interactive Itinerary & Chat**: Auto-scrolling conversational view with Markdown rendering and quick suggestion prompts.
+  - **Destination Analytics Panel**: Sleek dashboard rendering key metrics, YouTube travel vlogs, and Maps Explorer.
+* **One-Click Itinerary Export**: Download itineraries directly as formatted `.md` files.
+
+---
+
+## 🛠️ Quick Start with Docker Compose
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/shaimon12/travel_planner.git
+cd travel_planner
+```
+
+### 2. Configure Environment
+```bash
+cp .env.example .env
+```
+Edit `.env` and set your credentials:
+```env
+GEMINI_API_KEY=
+SECRET_KEY=
+```
+
+### 3. Spin up the Full Stack
+```bash
+docker compose up --build -d
+```
+
+### 4. Access the Applications
+- **Frontend Web Client**: [http://localhost:3000](http://localhost:3000)
+- **FastAPI Interactive Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **API Health Check**: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+
+---
+
+## 💻 Standalone Local Development
+
+### Backend (FastAPI)
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend (React + Vite)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Client runs at `http://localhost:5173`.
+
+---
+
+## 👨‍💻 Developer & Attribution
+Built by **Shaimon Rahman**  
+[![LinkedIn Connect](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/shaimonrahman)

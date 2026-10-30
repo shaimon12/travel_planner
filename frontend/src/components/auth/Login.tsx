@@ -120,3 +120,4 @@ export const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
     </div>
   );
 };
+

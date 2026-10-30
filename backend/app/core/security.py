@@ -44,13 +44,15 @@ def create_access_token(subject: Union[str, Any], expires_delta: Optional[timede
         "sub": str(subject),
         "iat": datetime.utcnow()
     }
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    secret_key = settings.SECRET_KEY or os.getenv("SECRET_KEY", "")
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 def decode_access_token(token: str) -> Optional[dict]:
     """Decodes and validates a JWT token."""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        secret_key = settings.SECRET_KEY or os.getenv("SECRET_KEY", "")
+        payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
         return payload
     except (jwt.PyJWTError, Exception):
         return None
@@ -85,3 +87,4 @@ def get_current_user(
         raise credentials_exception
 
     return user
+

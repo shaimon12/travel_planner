@@ -1,3 +1,4 @@
+import os
 from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
@@ -8,16 +9,16 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Database URL: default to SQLite for seamless local dev, easily overridden by PostgreSQL
-    DATABASE_URL: str = "sqlite:///./travel_planner.db"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./travel_planner.db")
 
-    # JWT Authentication & Security
-    SECRET_KEY: str = "travel-planner-super-secret-jwt-key-2026-production-ready"
+    # JWT Authentication & Security - strictly loaded from environment variable
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # Google Gemini AI settings
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     
     # CORS Origins
     CORS_ORIGINS: Union[List[str], str] = [
@@ -40,4 +41,3 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
-
