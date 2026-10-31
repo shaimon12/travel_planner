@@ -36,7 +36,8 @@ export const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
     try {
       setIsSubmitting(true);
-      await register(email.trim(), password, name.trim());
+      const guestTripId = localStorage.getItem('guest_trip_id') || undefined;
+      await register(email.trim(), password, name.trim(), guestTripId);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {

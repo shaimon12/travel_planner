@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string, guestTripId?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -60,9 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     handleAuthSuccess(data);
   };
 
-  const register = async (email: string, password: string, name?: string) => {
-    const data = await apiService.register({ email, password, name });
+  const register = async (email: string, password: string, name?: string, guestTripId?: string) => {
+    const data = await apiService.register({ email, password, name, guest_trip_id: guestTripId });
     handleAuthSuccess(data);
+    localStorage.removeItem('guest_trip_id');
   };
 
   const logout = () => {

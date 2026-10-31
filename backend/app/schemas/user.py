@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: Optional[str] = None
+    guest_trip_id: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr

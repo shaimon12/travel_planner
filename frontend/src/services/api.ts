@@ -52,7 +52,7 @@ export const apiService = {
   /**
    * Registers a new tenant user.
    */
-  async register(data: { email: string; password: string; name?: string }): Promise<AuthResponse> {
+  async register(data: { email: string; password: string; name?: string; guest_trip_id?: string }): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>('/auth/register', data);
     return response.data;
   },

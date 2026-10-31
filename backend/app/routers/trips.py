@@ -1,9 +1,9 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_user_optional
 from app.models.user import User
 from app.models.trip import TripSession
 from app.models.message import Message
@@ -23,10 +23,12 @@ router = APIRouter(prefix="/trips", tags=["Trips"])
 def create_trip(
     trip_in: TripCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
-    Creates a new trip session tied to the authenticated tenant user.
+    Creates a new trip session.
+    If authenticated, links strictly to current user.
+    If unauthenticated, creates as an onboarding guest trip (is_guest=True).
     Routes parameters through LangGraph workflow:
       Node 1: Destination Validator & Weather Fetcher
       Node 2: Itinerary Generator (strictly formatted markdown)
@@ -68,9 +70,13 @@ def create_trip(
     destination_name = agent_output.get("validated_destination") or trip_in.raw_destination
     title = trip_in.title if trip_in.title and trip_in.title != "My Trip" else f"Trip to {destination_name}"
 
-    # 1. Create Trip Session entity strictly linked to current authenticated user
+    is_guest = current_user is None
+    user_id = current_user.id if current_user else None
+
+    # 1. Create Trip Session entity
     trip = TripSession(
-        user_id=current_user.id,
+        user_id=user_id,
+        is_guest=is_guest,
         title=title,
         traveler_name=trip_in.traveler_name,
         raw_destination=trip_in.raw_destination,
@@ -123,11 +129,15 @@ def create_trip(
 @router.get("", response_model=List[TripSessionResponse])
 def list_trips(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Lists all trip sessions belonging exclusively to the authenticated user.
+    If unauthenticated, returns an empty list (guests track their single trip session via localStorage).
     """
+    if not current_user:
+        return []
+
     return (
         db.query(TripSession)
         .filter(TripSession.user_id == current_user.id)
@@ -139,17 +149,28 @@ def list_trips(
 def get_trip(
     trip_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Fetches full trip session details including chat history and destination analytics.
-    Enforces user ownership.
+    Allows access if the trip is a guest trip, or if it belongs to the authenticated user.
     """
-    trip = (
-        db.query(TripSession)
-        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
-        .first()
-    )
+    if current_user:
+        trip = (
+            db.query(TripSession)
+            .filter(
+                TripSession.id == trip_id,
+                (TripSession.user_id == current_user.id) | (TripSession.is_guest == True)
+            )
+            .first()
+        )
+    else:
+        trip = (
+            db.query(TripSession)
+            .filter(TripSession.id == trip_id, TripSession.is_guest == True)
+            .first()
+        )
+
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -167,11 +188,15 @@ def chat_with_trip(
     """
     Accepts user follow-up questions, routes through LangGraph workflow with conversation
     context, persists user message and AI response, and returns response payload.
-    Enforces user ownership.
+    Requires authentication. If user is interacting with an unclaimed guest trip,
+    claims the trip for the authenticated user.
     """
     trip = (
         db.query(TripSession)
-        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
+        .filter(
+            TripSession.id == trip_id,
+            (TripSession.user_id == current_user.id) | (TripSession.is_guest == True)
+        )
         .first()
     )
     if not trip:
@@ -179,6 +204,13 @@ def chat_with_trip(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Trip session '{trip_id}' not found."
         )
+
+    # Automatically claim guest trip if owned by guest
+    if trip.is_guest and not trip.user_id:
+        trip.user_id = current_user.id
+        trip.is_guest = False
+        db.commit()
+        db.refresh(trip)
 
     clean_user_message = chat_in.message.strip()
     if not clean_user_message:
@@ -245,17 +277,28 @@ def chat_with_trip(
 def delete_trip(
     trip_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Deletes a trip session, cascading removal of associated messages and analytics.
-    Enforces user ownership.
+    Enforces user ownership or guest ownership.
     """
-    trip = (
-        db.query(TripSession)
-        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
-        .first()
-    )
+    if current_user:
+        trip = (
+            db.query(TripSession)
+            .filter(
+                TripSession.id == trip_id,
+                (TripSession.user_id == current_user.id) | (TripSession.is_guest == True)
+            )
+            .first()
+        )
+    else:
+        trip = (
+            db.query(TripSession)
+            .filter(TripSession.id == trip_id, TripSession.is_guest == True)
+            .first()
+        )
+
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -269,17 +312,27 @@ def delete_trip(
 def get_trip_analytics(
     trip_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Fetches destination analytics metrics for a specific trip session.
-    Enforces user ownership.
     """
-    trip = (
-        db.query(TripSession)
-        .filter(TripSession.id == trip_id, TripSession.user_id == current_user.id)
-        .first()
-    )
+    if current_user:
+        trip = (
+            db.query(TripSession)
+            .filter(
+                TripSession.id == trip_id,
+                (TripSession.user_id == current_user.id) | (TripSession.is_guest == True)
+            )
+            .first()
+        )
+    else:
+        trip = (
+            db.query(TripSession)
+            .filter(TripSession.id == trip_id, TripSession.is_guest == True)
+            .first()
+        )
+
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

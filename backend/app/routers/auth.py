@@ -9,6 +9,7 @@ from app.core.security import (
     get_current_user,
 )
 from app.models.user import User
+from app.models.trip import TripSession
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     """
     Registers a new tenant user with a hashed password and returns a JWT access token.
+    If an optional guest_trip_id is provided, updates that trip's ownership to the new user.
     """
     normalized_email = user_in.email.strip().lower()
 
@@ -43,6 +45,14 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Claim guest trip if guest_trip_id was provided
+    if user_in.guest_trip_id:
+        guest_trip = db.query(TripSession).filter(TripSession.id == user_in.guest_trip_id).first()
+        if guest_trip:
+            guest_trip.user_id = new_user.id
+            guest_trip.is_guest = False
+            db.commit()
 
     # Issue access token
     access_token = create_access_token(subject=new_user.id)

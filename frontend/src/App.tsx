@@ -8,10 +8,11 @@ import { Register } from './components/auth/Register';
 import { apiService } from './services/api';
 import { useAuth } from './context/AuthContext';
 import { TripSession, TripDetail, TripCreateInput, Message } from './types';
-import { Loader2, Compass } from 'lucide-react';
+import { Loader2, Compass, X } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const [trips, setTrips] = useState<TripSession[]>([]);
@@ -22,25 +23,31 @@ export const App: React.FC = () => {
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
-  // Load trips when authenticated
+  // Load trips on mount / when auth state changes
   useEffect(() => {
     if (isAuthenticated) {
       loadTrips();
     } else {
-      setTrips([]);
-      setActiveTripId(null);
-      setActiveTrip(null);
+      // Progressive Onboarding: Check for existing guest trip in localStorage
+      const guestTripId = localStorage.getItem('guest_trip_id');
+      if (guestTripId) {
+        loadGuestTrip(guestTripId);
+      } else {
+        setTrips([]);
+        setActiveTripId(null);
+        setActiveTrip(null);
+      }
     }
   }, [isAuthenticated]);
 
   // When activeTripId changes, fetch full trip details
   useEffect(() => {
-    if (activeTripId && isAuthenticated) {
+    if (activeTripId) {
       loadTripDetails(activeTripId);
     } else {
       setActiveTrip(null);
     }
-  }, [activeTripId, isAuthenticated]);
+  }, [activeTripId]);
 
   const loadTrips = async () => {
     try {
@@ -51,9 +58,28 @@ export const App: React.FC = () => {
         setActiveTripId(list[0].id);
       } else {
         setActiveTripId(null);
+        setActiveTrip(null);
       }
     } catch (err) {
       console.error('Failed to load trips:', err);
+    } finally {
+      setIsLoadingTrips(false);
+    }
+  };
+
+  const loadGuestTrip = async (guestTripId: string) => {
+    try {
+      setIsLoadingTrips(true);
+      const guestTrip = await apiService.getTrip(guestTripId);
+      setTrips([guestTrip]);
+      setActiveTripId(guestTrip.id);
+      setActiveTrip(guestTrip);
+    } catch (err) {
+      console.warn('Guest trip not found or expired:', err);
+      localStorage.removeItem('guest_trip_id');
+      setTrips([]);
+      setActiveTripId(null);
+      setActiveTrip(null);
     } finally {
       setIsLoadingTrips(false);
     }
@@ -72,6 +98,10 @@ export const App: React.FC = () => {
     try {
       setIsCreatingTrip(true);
       const newTrip = await apiService.createTrip(data);
+      // Store guest_trip_id for progressive onboarding if unauthenticated
+      if (!isAuthenticated) {
+        localStorage.setItem('guest_trip_id', newTrip.id);
+      }
       setTrips(prev => [newTrip, ...prev]);
       setActiveTripId(newTrip.id);
       setActiveTrip(newTrip);
@@ -84,6 +114,9 @@ export const App: React.FC = () => {
   const handleDeleteTrip = async (id: string) => {
     try {
       await apiService.deleteTrip(id);
+      if (localStorage.getItem('guest_trip_id') === id) {
+        localStorage.removeItem('guest_trip_id');
+      }
       const updatedList = trips.filter(t => t.id !== id);
       setTrips(updatedList);
       if (activeTripId === id) {
@@ -168,6 +201,11 @@ export const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const openAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
   // Splash Screen during auth initialization
   if (isAuthLoading) {
     return (
@@ -185,28 +223,9 @@ export const App: React.FC = () => {
     );
   }
 
-  // Unauthenticated Auth Screen (Login / Register)
-  if (!isAuthenticated) {
-    return (
-      <div className="relative flex min-h-screen w-screen items-center justify-center bg-slate-950 p-4 overflow-hidden">
-        {/* Background Ambient Glows */}
-        <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 w-full flex justify-center">
-          {authMode === 'login' ? (
-            <Login onSwitchToRegister={() => setAuthMode('register')} />
-          ) : (
-            <Register onSwitchToLogin={() => setAuthMode('login')} />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Authenticated Main SaaS Workspace
+  // Progressive Onboarding: Unauthenticated users have direct access to the main workspace!
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans relative">
       {/* Persistent Sidebar */}
       <Sidebar
         trips={trips}
@@ -215,6 +234,7 @@ export const App: React.FC = () => {
         onDeleteTrip={handleDeleteTrip}
         onCreateTrip={handleCreateTrip}
         isCreating={isCreatingTrip}
+        onOpenAuth={openAuth}
       />
 
       {/* Main Dual-View Workspace */}
@@ -238,6 +258,7 @@ export const App: React.FC = () => {
               onSendMessage={handleSendMessage}
               isSending={isSendingMessage}
               destination={activeTrip?.destination}
+              onRequireAuth={openAuth}
             />
           ) : (
             <AnalyticsPanel
@@ -247,6 +268,26 @@ export const App: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Auth Modal Overlay (Login / Register) */}
+      {showAuthModal && !isAuthenticated && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md">
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute -top-3 -right-3 z-20 h-8 w-8 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition shadow-lg"
+              title="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            {authMode === 'login' ? (
+              <Login onSwitchToRegister={() => setAuthMode('register')} />
+            ) : (
+              <Register onSwitchToLogin={() => setAuthMode('login')} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

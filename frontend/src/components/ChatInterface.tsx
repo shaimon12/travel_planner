@@ -9,15 +9,19 @@ import {
   User,
   Loader2,
   CloudSun,
-  Lightbulb
+  Lightbulb,
+  Lock,
+  X,
 } from 'lucide-react';
 import { Message } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (content: string) => Promise<void>;
   isSending: boolean;
   destination?: string;
+  onRequireAuth?: (mode?: 'login' | 'register') => void;
 }
 
 const QUICK_SUGGESTIONS = [
@@ -32,8 +36,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSendMessage,
   isSending,
   destination,
+  onRequireAuth,
 }) => {
+  const { isAuthenticated } = useAuth();
   const [input, setInput] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of chat when new message arrives or sending changes
@@ -48,6 +55,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isSending) return;
+
+    // Intercept chat input if user is unauthenticated
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
     const msg = input.trim();
     setInput('');
     await onSendMessage(msg);
@@ -55,6 +69,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const handleSuggestionClick = (suggestion: string) => {
     if (isSending) return;
+
+    // Intercept suggestion clicks if user is unauthenticated
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
     onSendMessage(suggestion);
   };
 
@@ -228,6 +249,57 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </button>
         </form>
       </div>
+
+      {/* Guest Mode Restriction Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl relative text-center">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition"
+              title="Close modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Lock Icon */}
+            <div className="h-12 w-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 mx-auto flex items-center justify-center mb-4">
+              <Lock className="h-6 w-6" />
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-2">Save & Customize Your Trip</h3>
+
+            {/* Mandatory exact requirement text */}
+            <p className="text-sm text-slate-300 leading-relaxed mb-6">
+              Create a free account to modify this itinerary and save your trip.
+            </p>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  onRequireAuth?.('register');
+                }}
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-1.5"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Create Free Account</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  onRequireAuth?.('login');
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs border border-slate-700 transition"
+              >
+                <span>Already have an account? Sign In</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

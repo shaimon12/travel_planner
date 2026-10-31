@@ -37,6 +37,7 @@ class TripUpdate(BaseModel):
 class TripSessionResponse(TripBase):
     id: str
     user_id: Optional[str] = None
+    is_guest: bool = True
     status: str
     created_at: datetime
     updated_at: datetime

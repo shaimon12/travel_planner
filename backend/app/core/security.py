@@ -88,3 +88,24 @@ def get_current_user(
 
     return user
 
+def get_current_user_optional(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Optional authentication dependency. Returns User if a valid Bearer token
+    is provided, or None if unauthenticated / token is missing or invalid.
+    """
+    if not auth or not auth.credentials:
+        return None
+
+    payload = decode_access_token(auth.credentials)
+    if payload is None:
+        return None
+
+    user_id: Optional[str] = payload.get("sub")
+    if user_id is None:
+        return None
+
+    return db.query(User).filter(User.id == user_id).first()
+

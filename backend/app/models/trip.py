@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import Column, String, Integer, Date, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, String, Integer, Date, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -14,6 +14,7 @@ class TripSession(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_guest = Column(Boolean, default=True, nullable=False)
     
     # Trip metadata & parameters
     title = Column(String(255), nullable=False, default="My Trip")

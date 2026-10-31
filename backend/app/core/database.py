@@ -38,8 +38,22 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initializes tables in database."""
+    """Initializes tables in database and applies lightweight schema updates."""
     # Import all models to register them in Base.metadata
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # Ensure schema migration for is_guest column on existing databases
+    from sqlalchemy import inspect, text
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(engine)
+            tables = inspector.get_table_names()
+            if "trip_sessions" in tables:
+                columns = [c["name"] for c in inspector.get_columns("trip_sessions")]
+                if "is_guest" not in columns:
+                    conn.execute(text("ALTER TABLE trip_sessions ADD COLUMN is_guest BOOLEAN DEFAULT TRUE"))
+                    conn.commit()
+    except Exception:
+        pass
 

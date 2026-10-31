@@ -42,6 +42,7 @@ export interface DestinationAnalytics {
 export interface TripSession {
   id: string;
   user_id?: string;
+  is_guest?: boolean;
   title: string;
   destination?: string;
   raw_destination?: string;
