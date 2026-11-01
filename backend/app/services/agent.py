@@ -9,13 +9,15 @@ def plan_new_trip(trip_params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Executes initial trip planning across:
     1. Node 1: Destination Validator & Weather Fetcher
-    2. Node 2: Itinerary Generator (strict markdown)
-    3. Node 3: Analytics Generator (strict JSON)
+    2. Node 2: Flight Search & Booking Options
+    3. Node 3: Itinerary Generator (strict markdown & flight block)
+    4. Node 4: Analytics Generator (strict JSON)
     """
     initial_state: AgentState = {
         "mode": "initial_plan",
         "trip_id": trip_params.get("id"),
         "traveler_name": trip_params.get("traveler_name", "Traveler"),
+        "origin_city": trip_params.get("origin_city", "Sydney, Australia"),
         "raw_destination": trip_params.get("raw_destination", ""),
         "destination": trip_params.get("destination", ""),
         "start_date": str(trip_params.get("start_date", "")),
@@ -23,6 +25,7 @@ def plan_new_trip(trip_params: Dict[str, Any]) -> Dict[str, Any]:
         "budget": trip_params.get("budget", "Moderate"),
         "travel_type": trip_params.get("travel_type", "Solo"),
         "group_size": trip_params.get("group_size", 1),
+        "children_ages": trip_params.get("children_ages"),
         "interests": trip_params.get("interests", []),
         "dietary_restrictions": trip_params.get("dietary_restrictions", []),
         "messages": [],
@@ -36,6 +39,7 @@ def plan_new_trip(trip_params: Dict[str, Any]) -> Dict[str, Any]:
         "weather_report": result.get("weather_report"),
         "itinerary": result.get("itinerary_output") or result.get("final_response"),
         "analytics": result.get("analytics_output"),
+        "flight_data": result.get("flight_data"),
         "error": result.get("error")
     }
 
@@ -46,12 +50,14 @@ def handle_trip_chat(
 ) -> Dict[str, Any]:
     """
     Handles conversational follow-ups for an existing trip:
-    Routes through Node 2 (Itinerary Generator in Q&A mode) with persistent context and Google Maps rules.
+    Routes through Node 2 / Node 3 (Flight Search & Itinerary Generator in Q&A mode)
+    with persistent context, family parameters, and Google Maps & Flight link rules.
     """
     state: AgentState = {
         "mode": "chat_followup",
         "trip_id": trip_params.get("id"),
         "traveler_name": trip_params.get("traveler_name", "Traveler"),
+        "origin_city": trip_params.get("origin_city", "Sydney, Australia"),
         "destination": trip_params.get("destination", ""),
         "raw_destination": trip_params.get("raw_destination", ""),
         "start_date": str(trip_params.get("start_date", "")),
@@ -59,6 +65,7 @@ def handle_trip_chat(
         "budget": trip_params.get("budget", "Moderate"),
         "travel_type": trip_params.get("travel_type", "Solo"),
         "group_size": trip_params.get("group_size", 1),
+        "children_ages": trip_params.get("children_ages"),
         "interests": trip_params.get("interests", []),
         "dietary_restrictions": trip_params.get("dietary_restrictions", []),
         "weather_report": trip_params.get("weather_report", ""),
@@ -71,5 +78,6 @@ def handle_trip_chat(
     return {
         "response": result.get("final_response", ""),
         "weather_report": result.get("weather_report"),
+        "flight_data": result.get("flight_data"),
         "error": result.get("error")
     }

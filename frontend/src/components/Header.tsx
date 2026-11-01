@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
             {trip?.destination && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">
                 <MapPin className="h-3 w-3 mr-1" />
-                {trip.destination}
+                {trip.origin_city ? `${trip.origin_city} ➔ ${trip.destination}` : trip.destination}
               </span>
             )}
           </div>

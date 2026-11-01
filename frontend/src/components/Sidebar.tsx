@@ -9,6 +9,7 @@ import {
   Loader2,
   MapPin,
   LogOut,
+  Plane,
 } from 'lucide-react';
 import { TripSession, TripCreateInput } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -56,15 +57,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Form State
   const [travelerName, setTravelerName] = useState('Alex');
+  const [originCity, setOriginCity] = useState('Sydney, Australia');
   const [rawDestination, setRawDestination] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [duration, setDuration] = useState(3);
   const [budget, setBudget] = useState('Moderate');
   const [travelType, setTravelType] = useState('Solo');
   const [groupSize, setGroupSize] = useState(1);
+  const [childrenAges, setChildrenAges] = useState('');
   const [interests, setInterests] = useState<string[]>(['History 🏛️', 'Food 🍜']);
   const [dietary, setDietary] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const getMinGroupSize = (type: string) => {
+    switch (type) {
+      case 'Couple':
+        return 2;
+      case 'Family':
+      case 'Friends':
+        return 3;
+      case 'Solo':
+      default:
+        return 1;
+    }
+  };
+
+  const handleTravelTypeChange = (newType: string) => {
+    setTravelType(newType);
+    const minSize = getMinGroupSize(newType);
+    setGroupSize(prev => Math.max(prev, minSize));
+  };
 
   const toggleInterest = (interest: string) => {
     setInterests(prev =>
@@ -90,12 +112,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     try {
       await onCreateTrip({
         traveler_name: travelerName.trim(),
+        origin_city: originCity.trim() || 'Sydney, Australia',
         raw_destination: rawDestination.trim(),
         start_date: startDate,
         duration: Number(duration),
         budget,
         travel_type: travelType,
-        group_size: Number(groupSize),
+        group_size: Math.max(Number(groupSize), getMinGroupSize(travelType)),
+        children_ages: travelType === 'Family' && childrenAges.trim() ? childrenAges.trim() : undefined,
         interests,
         dietary_restrictions: dietary,
       });
@@ -161,6 +185,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div>
+              <label className="block text-slate-300 font-medium mb-1 flex items-center justify-between">
+                <span>Origin City</span>
+                <span className="text-[10px] text-indigo-400 font-normal">Flight Booking Deals ✈️</span>
+              </label>
+              <div className="relative">
+                <Plane className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-500" />
+                <input
+                  type="text"
+                  value={originCity}
+                  onChange={e => setOriginCity(e.target.value)}
+                  placeholder="e.g. Sydney, Australia or London"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
               <label className="block text-slate-300 font-medium mb-1">Destination</label>
               <div className="relative">
                 <MapPin className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-500" />
@@ -216,28 +258,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <label className="block text-slate-300 font-medium mb-1">Style</label>
                 <select
                   value={travelType}
-                  onChange={e => setTravelType(e.target.value)}
+                  onChange={e => handleTravelTypeChange(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="Solo">Solo</option>
-                  <option value="Couple">Couple</option>
-                  <option value="Family">Family</option>
-                  <option value="Friends">Friends</option>
+                  <option value="Solo">Solo (1)</option>
+                  <option value="Couple">Couple (2)</option>
+                  <option value="Family">Family (3+)</option>
+                  <option value="Friends">Friends (3+)</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Total Travelers</label>
+              <label className="block text-slate-300 font-medium mb-1 flex items-center justify-between">
+                <span>Total Travelers</span>
+                <span className="text-[10px] text-slate-500">Min: {getMinGroupSize(travelType)}</span>
+              </label>
               <input
                 type="number"
-                min="1"
+                min={getMinGroupSize(travelType)}
                 max="20"
                 value={groupSize}
                 onChange={e => setGroupSize(Number(e.target.value))}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
               />
             </div>
+
+            {travelType === 'Family' && (
+              <div className="p-2.5 bg-indigo-950/40 rounded-lg border border-indigo-500/20">
+                <label className="block text-slate-300 font-medium mb-1 flex items-center justify-between">
+                  <span>Children/Infants Ages</span>
+                  <span className="text-[10px] text-indigo-400 font-normal">Family Customization</span>
+                </label>
+                <input
+                  type="text"
+                  value={childrenAges}
+                  onChange={e => setChildrenAges(e.target.value)}
+                  placeholder="e.g., 2, 5 (or infant, 7)"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs"
+                />
+              </div>
+            )}
 
             {/* Interests Chips */}
             <div>

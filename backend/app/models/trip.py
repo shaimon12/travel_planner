@@ -18,6 +18,7 @@ class TripSession(Base):
     
     # Trip metadata & parameters
     title = Column(String(255), nullable=False, default="My Trip")
+    origin_city = Column(String(255), nullable=True)
     destination = Column(String(255), nullable=True, index=True)
     raw_destination = Column(String(255), nullable=True)
     traveler_name = Column(String(255), nullable=True)
@@ -26,6 +27,7 @@ class TripSession(Base):
     budget = Column(String(50), default="Moderate", nullable=False)  # Shoestring, Moderate, Luxury
     travel_type = Column(String(50), default="Solo", nullable=False)  # Solo, Couple, Family, Friends
     group_size = Column(Integer, default=1, nullable=False)
+    children_ages = Column(String(255), nullable=True)  # e.g., "2, 5"
     interests = Column(JSON, default=list, nullable=False)  # e.g., ["History", "Food"]
     dietary_restrictions = Column(JSON, default=list, nullable=False)  # e.g., ["Vegetarian"]
     status = Column(String(50), default="active", nullable=False)  # active, completed, archived

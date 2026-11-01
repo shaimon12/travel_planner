@@ -43,7 +43,7 @@ def init_db():
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
-    # Ensure schema migration for is_guest column on existing databases
+    # Ensure schema migration for is_guest, origin_city, and children_ages on existing databases
     from sqlalchemy import inspect, text
     try:
         with engine.connect() as conn:
@@ -53,7 +53,11 @@ def init_db():
                 columns = [c["name"] for c in inspector.get_columns("trip_sessions")]
                 if "is_guest" not in columns:
                     conn.execute(text("ALTER TABLE trip_sessions ADD COLUMN is_guest BOOLEAN DEFAULT TRUE"))
-                    conn.commit()
+                if "origin_city" not in columns:
+                    conn.execute(text("ALTER TABLE trip_sessions ADD COLUMN origin_city VARCHAR(255)"))
+                if "children_ages" not in columns:
+                    conn.execute(text("ALTER TABLE trip_sessions ADD COLUMN children_ages VARCHAR(255)"))
+                conn.commit()
     except Exception:
         pass
 

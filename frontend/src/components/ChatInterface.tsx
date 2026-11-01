@@ -12,6 +12,7 @@ import {
   Lightbulb,
   Lock,
   X,
+  Plane,
 } from 'lucide-react';
 import { Message } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,7 @@ interface ChatInterfaceProps {
 }
 
 const QUICK_SUGGESTIONS = [
+  'Find live flight options ✈️',
   'Recommend top hidden gem cafes ☕',
   'What is the current weather? ⛅',
   'Make Day 2 more relaxing 🧘',
@@ -141,18 +143,30 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         components={{
                           a: ({ href, children }) => {
                             const isGoogleMaps = href?.includes('google.com/maps');
+                            const isFlightLink =
+                              href?.includes('flights') ||
+                              href?.includes('google.com/travel/flights') ||
+                              String(children).toLowerCase().includes('flight') ||
+                              String(children).toLowerCase().includes('book');
+
                             return (
                               <a
                                 href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium transition ${
-                                  isGoogleMaps
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition my-0.5 ${
+                                  isFlightLink
+                                    ? 'bg-sky-500/20 text-sky-200 hover:bg-sky-500/30 border border-sky-400/40 shadow-sm'
+                                    : isGoogleMaps
                                     ? 'bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 border border-indigo-500/30'
                                     : 'text-sky-400 hover:underline'
                                 }`}
                               >
-                                {isGoogleMaps && <MapPin className="h-3 w-3 mr-1 text-indigo-400 shrink-0" />}
+                                {isFlightLink ? (
+                                  <Plane className="h-3 w-3 mr-1 text-sky-300 shrink-0" />
+                                ) : isGoogleMaps ? (
+                                  <MapPin className="h-3 w-3 mr-1 text-indigo-400 shrink-0" />
+                                ) : null}
                                 <span>{children}</span>
                                 <ExternalLink className="h-2.5 w-2.5 ml-1 opacity-70 shrink-0" />
                               </a>

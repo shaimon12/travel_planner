@@ -51,12 +51,14 @@ def create_trip(
     # Execute LangGraph Multi-Agent Workflow
     agent_output = plan_new_trip({
         "traveler_name": trip_in.traveler_name,
+        "origin_city": trip_in.origin_city or "Sydney, Australia",
         "raw_destination": trip_in.raw_destination,
         "start_date": trip_in.start_date,
         "duration": trip_in.duration,
         "budget": trip_in.budget,
         "travel_type": trip_in.travel_type,
         "group_size": corrected_size,
+        "children_ages": trip_in.children_ages,
         "interests": trip_in.interests or ["General Sightseeing", "Local Culture"],
         "dietary_restrictions": trip_in.dietary_restrictions or [],
     })
@@ -79,6 +81,7 @@ def create_trip(
         is_guest=is_guest,
         title=title,
         traveler_name=trip_in.traveler_name,
+        origin_city=trip_in.origin_city or "Sydney, Australia",
         raw_destination=trip_in.raw_destination,
         destination=destination_name,
         start_date=trip_in.start_date,
@@ -86,6 +89,7 @@ def create_trip(
         budget=trip_in.budget,
         travel_type=trip_in.travel_type,
         group_size=corrected_size,
+        children_ages=trip_in.children_ages,
         interests=trip_in.interests or ["General Sightseeing", "Local Culture"],
         dietary_restrictions=trip_in.dietary_restrictions or [],
         status="active"
@@ -240,6 +244,7 @@ def chat_with_trip(
         trip_params={
             "id": trip.id,
             "traveler_name": trip.traveler_name,
+            "origin_city": trip.origin_city or "Sydney, Australia",
             "destination": trip.destination,
             "raw_destination": trip.raw_destination,
             "start_date": str(trip.start_date),
@@ -247,6 +252,7 @@ def chat_with_trip(
             "budget": trip.budget,
             "travel_type": trip.travel_type,
             "group_size": trip.group_size,
+            "children_ages": trip.children_ages,
             "interests": trip.interests,
             "dietary_restrictions": trip.dietary_restrictions,
         },

@@ -46,12 +46,14 @@ export interface TripSession {
   title: string;
   destination?: string;
   raw_destination?: string;
+  origin_city?: string;
   traveler_name?: string;
   start_date?: string;
   duration: number;
   budget: string;
   travel_type: string;
   group_size: number;
+  children_ages?: string;
   interests: string[];
   dietary_restrictions: string[];
   status: string;
@@ -67,12 +69,14 @@ export interface TripDetail extends TripSession {
 export interface TripCreateInput {
   traveler_name: string;
   raw_destination: string;
+  origin_city?: string;
   title?: string;
   start_date?: string;
   duration: number;
   budget: string;
   travel_type: string;
   group_size: number;
+  children_ages?: string;
   interests: string[];
   dietary_restrictions: string[];
 }

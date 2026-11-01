@@ -8,6 +8,7 @@ from app.schemas.analytics import DestinationAnalyticsResponse
 class TripBase(BaseModel):
     title: Optional[str] = "My Trip"
     traveler_name: Optional[str] = None
+    origin_city: Optional[str] = None
     destination: Optional[str] = None
     raw_destination: Optional[str] = None
     start_date: Optional[date] = None
@@ -15,12 +16,15 @@ class TripBase(BaseModel):
     budget: str = Field(default="Moderate")  # Shoestring, Moderate, Luxury
     travel_type: str = Field(default="Solo")  # Solo, Couple, Family, Friends
     group_size: int = Field(default=1, ge=1, le=20)
+    children_ages: Optional[str] = None
     interests: List[str] = Field(default_factory=list)
     dietary_restrictions: List[str] = Field(default_factory=list)
 
 class TripCreate(TripBase):
     raw_destination: str
     traveler_name: str
+    origin_city: Optional[str] = None
+    children_ages: Optional[str] = None
 
 class TripUpdate(BaseModel):
     title: Optional[str] = None
