@@ -1,5 +1,5 @@
 from typing import Optional
-from app.services.llm import invoke_gemini
+from app.services.llm import invoke_llm
 
 def validate_destination(user_input: str) -> Optional[str]:
     """
@@ -23,7 +23,7 @@ def validate_destination(user_input: str) -> Optional[str]:
     Output ONLY the corrected name. No other text.
     """
 
-    response = invoke_gemini(prompt, temperature=0.0)
+    response = invoke_llm(prompt, temperature=0.0)
 
     if not response or "⚠️" in response or "error" in response.lower():
         # Fall back to capitalized input if LLM call unavailable or encounters error

@@ -36,6 +36,9 @@ services:
       - DEBUG=True
       - API_V1_STR=/api
       - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      - LLM_MODEL=${LLM_MODEL:-qwen/qwen-2.5-7b-instruct:free}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL}
       - SECRET_KEY=${SECRET_KEY}

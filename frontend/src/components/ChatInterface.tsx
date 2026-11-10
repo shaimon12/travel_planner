@@ -92,7 +92,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
             <h3 className="text-lg font-bold text-white mb-1">Your AI Travel Concierge</h3>
             <p className="text-xs text-slate-400 max-w-md mb-6">
-              Powered by Google Gemini 2.5 Flash, Open-Meteo, and LangGraph multi-agent orchestration. Fill in your trip details to generate an itinerary!
+              Powered by Qwen 2.5 (OpenRouter), Open-Meteo, and LangGraph multi-agent orchestration. Fill in your trip details to generate an itinerary!
             </p>
           </div>
         ) : (

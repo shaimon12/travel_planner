@@ -53,7 +53,7 @@ pip install -r requirements.txt
 3. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env and supply GEMINI_API_KEY
+# Edit .env and supply OPENAI_API_KEY (supports OpenRouter/Qwen, OpenAI, or local vLLM/Ollama)
 ```
 
 4. Run the server:

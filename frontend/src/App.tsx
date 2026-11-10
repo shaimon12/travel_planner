@@ -165,7 +165,7 @@ export const App: React.FC = () => {
         id: `err-${Date.now()}`,
         trip_id: activeTripId,
         role: 'assistant',
-        content: '⚠️ Network or API Error. Please verify backend service and GEMINI_API_KEY configuration.',
+        content: '⚠️ Network or API Error. Please verify backend service and OPENAI_API_KEY configuration.',
         created_at: new Date().toISOString(),
       };
       setActiveTrip(prev => {

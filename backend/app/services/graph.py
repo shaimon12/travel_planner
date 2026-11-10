@@ -3,7 +3,12 @@ import logging
 from typing import TypedDict, List, Dict, Any, Optional
 from datetime import date
 
-from app.services.llm import invoke_gemini, invoke_gemini_json
+from app.services.llm import (
+    invoke_llm,
+    get_destination_analytics,
+    invoke_gemini,
+    invoke_gemini_json,
+)
 from app.services.weather import get_weather_data
 from app.services.validator import validate_destination
 from app.services.flight_search import search_flights
@@ -254,7 +259,7 @@ def analytics_generator_node(state: AgentState) -> Dict[str, Any]:
     # Attach raw metadata
     analytics_data["raw_data"] = {
         "destination": destination,
-        "source": "AI Travel Market Intelligence (Gemini 2.5 Flash)",
+        "source": "AI Travel Market Intelligence (Qwen / OpenRouter)",
     }
 
     return {
