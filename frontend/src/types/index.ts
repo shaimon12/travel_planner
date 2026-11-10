@@ -12,14 +12,34 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface FlightOption {
+  id?: string;
+  airline: string;
+  flight_number?: string;
+  departure: string;
+  arrival: string;
+  duration?: string;
+  stops?: string;
+  price: string;
+  link?: string;
+  booking_url?: string;
+  cabin?: string;
+  tag?: string;
+  origin?: string;
+  destination?: string;
+  date?: string;
+}
+
 export interface Message {
   id: string;
   trip_id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  flight_data?: FlightOption[];
   meta?: {
     type?: string;
     weather_report?: string;
+    flight_data?: FlightOption[];
     [key: string]: any;
   };
   created_at: string;
@@ -83,6 +103,8 @@ export interface TripCreateInput {
 
 export interface ChatResponsePayload {
   response: string;
+  content?: string;
+  flight_data?: FlightOption[];
   message: Message;
   analytics?: DestinationAnalytics;
 }

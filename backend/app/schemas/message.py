@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, ConfigDict
 
 class MessageBase(BaseModel):
@@ -27,6 +27,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    content: Optional[str] = None
+    flight_data: Optional[List[Dict[str, Any]]] = None
     message: MessageResponse
     analytics: Optional[Any] = None
 

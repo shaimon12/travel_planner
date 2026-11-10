@@ -32,8 +32,7 @@ class AgentState(TypedDict, total=False):
     
     # Live External Enrichment
     weather_report: str
-    flight_data: Optional[Dict[str, Any]]
-    flight_markdown: Optional[str]
+    flight_data: Optional[List[Dict[str, Any]]]
     
     # Chat & Interaction History
     messages: List[Dict[str, str]]
@@ -79,7 +78,7 @@ def validator_weather_node(state: AgentState) -> Dict[str, Any]:
 def flight_search_node(state: AgentState) -> Dict[str, Any]:
     """
     Simulates querying real-time flight fares, schedules, and carrier routes.
-    Produces structured options and formatted Markdown booking blocks with deep-links.
+    Produces structured options list for Generative UI rendering.
     """
     origin = state.get("origin_city") or "Sydney, Australia"
     destination = state.get("destination") or state.get("raw_destination", "Destination")
@@ -97,16 +96,16 @@ def flight_search_node(state: AgentState) -> Dict[str, Any]:
 
     return {
         "flight_data": flight_result,
-        "flight_markdown": flight_result.get("markdown_block", "")
     }
 
 # ==============================================================================
-# Node 3: Itinerary Generator (Strict Markdown & Flight Booking Block)
+# Node 3: Itinerary Generator (Strict Markdown & Generative UI Flight Handoff)
 # ==============================================================================
 def itinerary_generator_node(state: AgentState) -> Dict[str, Any]:
     """
     Generates structured markdown itinerary for new trips (Mode 1),
-    or answers conversational follow-up questions adhering to strict Google Maps & Flight link rules (Mode 2).
+    or answers conversational follow-up questions adhering to strict Google Maps rules (Mode 2).
+    Delegates flight options rendering to the Generative UI frontend components.
     """
     mode = state.get("mode", "initial_plan")
     destination = state.get("destination", "Destination")
@@ -121,12 +120,11 @@ def itinerary_generator_node(state: AgentState) -> Dict[str, Any]:
     interests = state.get("interests", ["General Sightseeing"])
     dietary = state.get("dietary_restrictions", [])
     weather_report = state.get("weather_report", "Seasonal conditions.")
-    flight_markdown = state.get("flight_markdown") or ""
+    flight_data = state.get("flight_data")
 
-    # If flight_markdown is not yet present, run flight search if origin exists
-    if not flight_markdown and origin_city:
-        flt_res = search_flights(origin_city, destination, start_date, budget)
-        flight_markdown = flt_res.get("markdown_block", "")
+    # If flight_data is not yet present and origin_city exists, run flight search
+    if flight_data is None and origin_city:
+        flight_data = search_flights(origin_city, destination, start_date, budget)
 
     group_info = f"Traveling {travel_type} ({group_size} people)"
     if travel_type == "Family" and children_ages:
@@ -148,8 +146,10 @@ ANY time you mention a specific physical place (restaurant, hotel, museum, shop,
 [Place Name](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+Place+Name)
 *Failure to use this exact link structure will break the application architecture.*
 
-**✈️ GLOBAL RULE 2: LIVE FLIGHT BOOKING BLOCKS ✈️**
-Whenever presenting flight options (either on the initial plan or when asked about flights/airfare/airlines in chat), you MUST format the available flight options as a clear, actionable booking block with departure times, airline names, and the exact provided [Book Flight 🎫](url) booking hyperlinks.
+**✈️ GLOBAL RULE 2: GENERATIVE UI FLIGHTS (DO NOT FORMAT TABLES OR PRICES) ✈️**
+Do NOT format markdown tables, lists of flights, airline prices, or flight booking blocks.
+The system will display flight options automatically via the UI.
+If the user asks about flights, or on the initial trip generation, simply let them know that available live flight options from {origin_city} to {destination} are presented below in the interactive flight cards.
 
 **USER & TRIP CONTEXT:**
 - Traveler: {traveler}
@@ -164,21 +164,13 @@ Whenever presenting flight options (either on the initial plan or when asked abo
 """
 
     if mode == "initial_plan":
-        flight_section_instruction = f"""
-Include this exact live flight search block right above Day 1:
-{flight_markdown}
-""" if flight_markdown else ""
-
         user_prompt = f"""
 Create a highly logistical, geo-optimized {duration}-day itinerary. Group activities by neighborhood to minimize travel time. Use the live weather to prioritize indoor vs. outdoor activities.
-
-{flight_section_instruction}
+Remember: DO NOT create markdown flight tables or list flight prices. The system will display flight options automatically via the UI.
 
 You MUST output EXACTLY in this markdown format:
 
 ## 📅 {duration}-Day Itinerary: {destination}
-
-{flight_markdown}
 
 ### 🎒 Smart Packing List
 * [Essential 1 based on live weather]
@@ -199,6 +191,7 @@ You MUST output EXACTLY in this markdown format:
         return {
             "itinerary_output": response,
             "final_response": response,
+            "flight_data": flight_data,
         }
 
     else:
@@ -210,8 +203,7 @@ You MUST output EXACTLY in this markdown format:
 The user is asking a follow-up question regarding their trip to {destination}.
 1. DO NOT rewrite the entire itinerary unless explicitly asked to regenerate it.
 2. Provide a brief, friendly, and highly specific answer based on {destination}.
-3. If the user asks about flights, airlines, airfare, or booking travel from {origin_city} to {destination}, you MUST include this live booking block in your response:
-{flight_markdown}
+3. If the user asks about flights, airlines, airfare, or booking travel from {origin_city} to {destination}: Do NOT format markdown flight tables or list flight prices. The system will display flight options automatically via the UI.
 4. Apply the **GLOBAL RULE: STRICT GOOGLE MAPS LINKS** to every physical location you recommend:
    [Place Name](https://www.google.com/maps/search/?api=1&query={destination.replace(' ', '+')}+Place+Name)
 """
@@ -224,7 +216,8 @@ The user is asking a follow-up question regarding their trip to {destination}.
             history=history
         )
         return {
-            "final_response": response
+            "final_response": response,
+            "flight_data": flight_data if state.get("flight_data") else None,
         }
 
 # ==============================================================================

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Message } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { FlightCard } from './FlightCard';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -176,6 +177,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       >
                         {msg.content}
                       </ReactMarkdown>
+                    </div>
+                  )}
+
+                  {/* Generative UI: Live Flight Cards */}
+                  {!isUser && (msg.flight_data || msg.meta?.flight_data) && (
+                    <div className="mt-4 pt-3.5 border-t border-slate-800/90 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center text-xs font-bold text-slate-200">
+                          <Plane className="h-3.5 w-3.5 mr-1.5 text-sky-400" />
+                          Live Flight Options & Schedules
+                        </span>
+                        <span className="text-[10px] text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700/60 font-medium">
+                          Interactive Booking Cards
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {(msg.flight_data || msg.meta?.flight_data)!.map((flight, idx) => (
+                          <FlightCard key={flight.id || idx} flight={flight} />
+                        ))}
+                      </div>
                     </div>
                   )}
 

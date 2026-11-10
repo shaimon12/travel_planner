@@ -106,7 +106,8 @@ def create_trip(
         content=itinerary_content,
         meta={
             "type": "initial_itinerary",
-            "weather_report": agent_output.get("weather_report")
+            "weather_report": agent_output.get("weather_report"),
+            "flight_data": agent_output.get("flight_data"),
         }
     )
     db.add(initial_message)
@@ -262,12 +263,17 @@ def chat_with_trip(
 
     ai_reply = chat_result.get("response") or "I apologize, I could not generate a response. Please try again."
 
+    flight_data = chat_result.get("flight_data")
+
     # 4. Persist AI response message to database
     assistant_msg = Message(
         trip_id=trip.id,
         role="assistant",
         content=ai_reply,
-        meta={"type": "chat_followup"}
+        meta={
+            "type": "chat_followup",
+            "flight_data": flight_data,
+        }
     )
     db.add(assistant_msg)
     db.commit()
@@ -275,6 +281,8 @@ def chat_with_trip(
 
     return ChatResponse(
         response=ai_reply,
+        content=ai_reply,
+        flight_data=flight_data,
         message=MessageResponse.model_validate(assistant_msg),
         analytics=DestinationAnalyticsResponse.model_validate(trip.analytics) if trip.analytics else None
     )

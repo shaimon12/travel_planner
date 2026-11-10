@@ -151,11 +151,20 @@ export const App: React.FC = () => {
       setIsSendingMessage(true);
       const result = await apiService.sendMessage(activeTripId, content);
 
+      const assistantMessage: Message = {
+        ...result.message,
+        flight_data: result.flight_data || result.message.meta?.flight_data,
+        meta: {
+          ...result.message.meta,
+          flight_data: result.flight_data || result.message.meta?.flight_data,
+        },
+      };
+
       setActiveTrip(prev => {
         if (!prev) return null;
         return {
           ...prev,
-          messages: [...prev.messages, result.message],
+          messages: [...prev.messages, assistantMessage],
           analytics: result.analytics || prev.analytics,
         };
       });

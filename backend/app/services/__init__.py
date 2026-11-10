@@ -7,7 +7,7 @@ from app.services.llm import (
     invoke_gemini,
     invoke_gemini_json,
 )
-from app.services.flight_search import search_flights, format_flight_booking_block
+from app.services.flight_search import search_flights
 from app.services.graph import (
     AgentState,
     validator_weather_node,
@@ -27,7 +27,6 @@ __all__ = [
     "invoke_gemini",
     "invoke_gemini_json",
     "search_flights",
-    "format_flight_booking_block",
     "AgentState",
     "validator_weather_node",
     "flight_search_node",
