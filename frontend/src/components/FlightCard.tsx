@@ -73,10 +73,18 @@ export const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
           </div>
         </div>
 
+        {/*
+          PRODUCTION TRAVEL AFFILIATE INTEGRATION PLACEHOLDER:
+          Append your affiliate tracking ID (e.g., Travelpayouts marker or Skyscanner campaign tag)
+          Example: const affiliateUrl = `${bookingUrl}&marker=${AFFILIATE_MARKER}&subid=travel_planner_pro`;
+        */}
         <a
           href={bookingUrl}
           target="_blank"
           rel="noopener noreferrer"
+          data-affiliate-partner="travelpayouts"
+          data-affiliate-tracking-id="AFFILIATE_TRACKING_ID_PLACEHOLDER"
+          data-affiliate-campaign="flight_booking_cta"
           className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold text-xs shadow-md shadow-indigo-600/25 transition"
         >
           <span>Book Ticket ✈️</span>

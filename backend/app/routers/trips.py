@@ -1,9 +1,10 @@
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_optional
+from app.core.limiter import limiter
 from app.models.user import User
 from app.models.trip import TripSession
 from app.models.message import Message
@@ -20,7 +21,9 @@ from app.services.agent import plan_new_trip, handle_trip_chat
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
 @router.post("", response_model=TripSessionDetailResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 def create_trip(
+    request: Request,
     trip_in: TripCreate,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
@@ -184,34 +187,43 @@ def get_trip(
     return trip
 
 @router.post("/{trip_id}/chat", response_model=ChatResponse)
+@limiter.limit("10/minute")
 def chat_with_trip(
+    request: Request,
     trip_id: str,
     chat_in: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     Accepts user follow-up questions, routes through LangGraph workflow with conversation
     context, persists user message and AI response, and returns response payload.
-    Requires authentication. If user is interacting with an unclaimed guest trip,
-    claims the trip for the authenticated user.
+    Supports continuous free chatting for both unauthenticated guest travelers and registered users.
     """
-    trip = (
-        db.query(TripSession)
-        .filter(
-            TripSession.id == trip_id,
-            (TripSession.user_id == current_user.id) | (TripSession.is_guest == True)
+    if current_user:
+        trip = (
+            db.query(TripSession)
+            .filter(
+                TripSession.id == trip_id,
+                (TripSession.user_id == current_user.id) | (TripSession.is_guest == True)
+            )
+            .first()
         )
-        .first()
-    )
+    else:
+        trip = (
+            db.query(TripSession)
+            .filter(TripSession.id == trip_id)
+            .first()
+        )
+
     if not trip:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Trip session '{trip_id}' not found."
         )
 
-    # Automatically claim guest trip if owned by guest
-    if trip.is_guest and not trip.user_id:
+    # Automatically claim guest trip if owned by guest and user logs in
+    if current_user and trip.is_guest and not trip.user_id:
         trip.user_id = current_user.id
         trip.is_guest = False
         db.commit()
