@@ -53,7 +53,7 @@ pip install -r requirements.txt
 3. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env and supply OPENAI_API_KEY (supports OpenRouter/Qwen, OpenAI, or local vLLM/Ollama)
+# Edit .env and supply OPENROUTER_API_KEY (supports OpenRouter openrouter/free zero-cost auto-routing)
 ```
 
 4. Run the server:

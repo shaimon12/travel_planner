@@ -8,42 +8,47 @@ from app.core.config import settings
 logger = logging.getLogger("services.llm")
 
 def get_api_key() -> str:
-    """Retrieves OpenAI-compatible / OpenRouter API key from settings or environment."""
+    """Retrieves OpenRouter / OpenAI SDK API key from settings or environment."""
     return (
-        getattr(settings, "OPENAI_API_KEY", "")
+        getattr(settings, "OPENROUTER_API_KEY", "")
+        or os.getenv("OPENROUTER_API_KEY", "")
+        or getattr(settings, "OPENAI_API_KEY", "")
         or os.getenv("OPENAI_API_KEY", "")
         or getattr(settings, "GEMINI_API_KEY", "")
         or os.getenv("GEMINI_API_KEY", "")
     )
 
 def get_base_url() -> str:
-    """Retrieves OpenAI-compatible API base URL."""
+    """Retrieves OpenRouter / OpenAI-compatible API base URL."""
     return (
-        getattr(settings, "OPENAI_BASE_URL", "")
+        getattr(settings, "OPENROUTER_BASE_URL", "")
+        or os.getenv("OPENROUTER_BASE_URL", "")
+        or getattr(settings, "OPENAI_BASE_URL", "")
         or os.getenv("OPENAI_BASE_URL", "")
         or "https://openrouter.ai/api/v1"
     )
 
 def get_model_name(override: Optional[str] = None) -> str:
-    """Resolves model name, defaulting to Qwen 2.5 on OpenRouter."""
+    """Resolves model name, defaulting to 'openrouter/free' for auto-routing zero-cost inference."""
     if override:
         return override
     return (
-        getattr(settings, "LLM_MODEL", "")
+        getattr(settings, "PRIMARY_MODEL", "")
+        or os.getenv("PRIMARY_MODEL", "")
+        or getattr(settings, "LLM_MODEL", "")
         or os.getenv("LLM_MODEL", "")
-        or getattr(settings, "GEMINI_MODEL", "")
-        or "qwen/qwen-2.5-7b-instruct:free"
+        or "openrouter/free"
     )
 
 def get_openai_client():
-    """Initializes and returns an OpenAI client configured for OpenRouter / Qwen / OpenAI."""
+    """Initializes and returns an OpenAI client configured for OpenRouter auto-routing."""
     api_key = get_api_key()
     if not api_key:
         return None
     try:
         from openai import OpenAI
         base_url = get_base_url()
-        # Include OpenRouter attribution headers when targeting OpenRouter
+        # OpenRouter attribution headers
         default_headers = {}
         if "openrouter.ai" in base_url:
             default_headers = {
@@ -56,7 +61,7 @@ def get_openai_client():
             default_headers=default_headers if default_headers else None,
         )
     except Exception as e:
-        logger.error(f"Failed to initialize OpenAI client: {e}")
+        logger.error(f"Failed to initialize OpenAI/OpenRouter client: {e}")
         return None
 
 def invoke_llm(
@@ -67,16 +72,16 @@ def invoke_llm(
     model: Optional[str] = None,
 ) -> str:
     """
-    Invokes OpenAI-compatible API (e.g., Qwen on OpenRouter, Ollama, or OpenAI)
-    with optional chat history and system instructions.
+    Invokes LLM via OpenRouter auto-routing free endpoint (or configured PRIMARY_MODEL)
+    with optional multi-turn conversation history and system instructions.
     """
     api_key = get_api_key()
     model_name = get_model_name(model)
 
     if not api_key:
         return (
-            "⚠️ **API Key Missing:** Please provide a valid `OPENAI_API_KEY` in `backend/.env` "
-            "to generate live itineraries and chat responses with Qwen/OpenRouter."
+            "⚠️ **API Key Missing:** Please provide a valid `OPENROUTER_API_KEY` in `backend/.env` "
+            "to generate live itineraries and chat responses with OpenRouter's free auto-router."
         )
 
     try:
@@ -118,21 +123,23 @@ def invoke_llm(
         return ""
     except Exception as e:
         err_msg = str(e)
-        logger.error(f"OpenAI/OpenRouter call failed: {err_msg}")
+        logger.error(f"OpenRouter call failed: {err_msg}")
         if "429" in err_msg or "rate" in err_msg.lower() or "quota" in err_msg.lower():
             return (
-                "⚠️ **Rate Limit Exceeded:** The open-weight model quota or rate limit was reached. "
+                "⚠️ **Rate Limit Exceeded:** The OpenRouter free tier rate limit was reached. "
                 "Please retry in a moment or provide an OpenRouter API key."
             )
         elif "401" in err_msg or "auth" in err_msg.lower():
-            return "⚠️ **Authentication Error:** The provided `OPENAI_API_KEY` was rejected by the provider."
+            return "⚠️ **Authentication Error:** The provided `OPENROUTER_API_KEY` was rejected by OpenRouter."
+        elif "404" in err_msg or "not found" in err_msg.lower():
+            return f"⚠️ **Model Not Found (404):** The model '{model_name}' was not found. Please verify PRIMARY_MODEL is set to 'openrouter/free'."
         return f"⚠️ **AI Service Error:** {err_msg}"
 
 def get_destination_analytics(prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
     """
     Invokes LLM expecting a structured JSON destination analytics object.
-    Requests response_format={"type": "json_object"} when supported,
-    with automatic fallback and robust regex/markdown stripping.
+    Requests strict JSON output with robust markdown code-fence parsing
+    (supporting free auto-routed models that do not support API-level JSON mode).
     """
     fallback_data = {
         "visitors": "2.8M",
@@ -154,7 +161,10 @@ def get_destination_analytics(prompt: str, model: Optional[str] = None) -> Dict[
     messages = [
         {
             "role": "system",
-            "content": "You are a travel analytics engine. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+            "content": (
+                "You are an expert tourism data analyst. You MUST return ONLY a raw JSON object. "
+                "Do NOT include markdown formatting, code block ticks, or any introductory/explanatory text."
+            )
         },
         {
             "role": "user",
@@ -163,39 +173,30 @@ def get_destination_analytics(prompt: str, model: Optional[str] = None) -> Dict[
     ]
 
     raw_response = ""
-    # 1. Attempt with json_object response_format
+    # 1. Attempt standard completion without forcing API-level json_object mode,
+    # as openrouter/free dynamically routes to various models, some of which reject response_format.
     try:
         response = client.chat.completions.create(
             model=model_name,
             messages=messages,
             temperature=0.2,
-            response_format={"type": "json_object"},
         )
         if response.choices:
             raw_response = response.choices[0].message.content or ""
     except Exception as e:
-        # If response_format={"type": "json_object"} is unsupported by the specific open-weight model, retry without it
-        logger.warning(f"JSON mode request failed ({e}), retrying with standard completion...")
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=0.2,
-            )
-            if response.choices:
-                raw_response = response.choices[0].message.content or ""
-        except Exception as retry_err:
-            logger.error(f"Fallback completion call failed: {retry_err}")
-            return fallback_data
+        logger.error(f"OpenRouter analytics completion call failed: {e}")
+        return fallback_data
 
     if not raw_response:
         return fallback_data
 
-    # 2. Robust Markdown and code-fence cleaning
-    cleaned = re.sub(r"^```(?:json)?\s*", "", raw_response.strip(), flags=re.MULTILINE)
-    cleaned = re.sub(r"\s*```$", "", cleaned.strip(), flags=re.MULTILINE).strip()
+    # 2. Robust Markdown and code-fence regex cleaning
+    cleaned = raw_response.strip()
+    # Strip ```json ... ``` or ``` ... ```
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.MULTILINE).strip()
 
-    # Extract first '{' through matching or last '}'
+    # Find boundaries of JSON object '{' and '}'
     start_idx = cleaned.find("{")
     end_idx = cleaned.rfind("}")
     if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
@@ -203,7 +204,7 @@ def get_destination_analytics(prompt: str, model: Optional[str] = None) -> Dict[
 
     try:
         parsed = json.loads(cleaned)
-        # Ensure minimum required keys exist
+        # Verify and populate missing keys
         for key in ["visitors", "growth", "satisfaction", "top_demographic", "best_month"]:
             if key not in parsed:
                 parsed[key] = fallback_data[key]

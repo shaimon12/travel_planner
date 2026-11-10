@@ -49,7 +49,7 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({
         </div>
         <h2 className="text-2xl font-bold text-white">Tourism Trends: {destination}</h2>
         <p className="text-xs text-slate-400 mt-1">
-          Predictive metrics and tourism demographics powered by Qwen 2.5 & LangGraph.
+          Predictive metrics and tourism demographics powered by OpenRouter Free & LangGraph.
         </p>
       </div>
 

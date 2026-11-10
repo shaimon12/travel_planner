@@ -16,14 +16,21 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # LLM Settings (OpenAI-compatible: OpenRouter, Qwen, Ollama, vLLM, OpenAI)
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen/qwen-2.5-7b-instruct:free")
+    # LLM Settings (OpenRouter Auto-Routing Free Endpoint / OpenAI SDK)
+    OPENROUTER_API_KEY: str = (
+        os.getenv("OPENROUTER_API_KEY", "")
+        or os.getenv("OPENAI_API_KEY", "")
+        or os.getenv("GEMINI_API_KEY", "")
+    )
+    OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    PRIMARY_MODEL: str = os.getenv("PRIMARY_MODEL", "openrouter/free")
 
-    # Backwards compatibility alias for Gemini settings
-    GEMINI_API_KEY: str = os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("LLM_MODEL") or os.getenv("GEMINI_MODEL", "qwen/qwen-2.5-7b-instruct:free")
+    # Backwards compatibility aliases
+    OPENAI_API_KEY: str = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+    OPENAI_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    LLM_MODEL: str = os.getenv("PRIMARY_MODEL", "openrouter/free")
+    GEMINI_API_KEY: str = os.getenv("OPENROUTER_API_KEY") or os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("PRIMARY_MODEL", "openrouter/free")
     
     # CORS Origins
     CORS_ORIGINS: Union[List[str], str] = [

@@ -3,12 +3,7 @@ import logging
 from typing import TypedDict, List, Dict, Any, Optional
 from datetime import date
 
-from app.services.llm import (
-    invoke_llm,
-    get_destination_analytics,
-    invoke_gemini,
-    invoke_gemini_json,
-)
+from app.services.llm import invoke_llm, get_destination_analytics
 from app.services.weather import get_weather_data
 from app.services.validator import validate_destination
 from app.services.flight_search import search_flights
@@ -200,7 +195,7 @@ You MUST output EXACTLY in this markdown format:
 * **💡 Local Secret:** A specific local tip.
 *(Repeat structure for all {duration} days)*
 """
-        response = invoke_gemini(user_prompt, system_instruction=system_prompt)
+        response = invoke_llm(user_prompt, system_instruction=system_prompt)
         return {
             "itinerary_output": response,
             "final_response": response,
@@ -223,7 +218,7 @@ The user is asking a follow-up question regarding their trip to {destination}.
         user_message = state.get("user_input", "")
         history = state.get("messages", [])
 
-        response = invoke_gemini(
+        response = invoke_llm(
             prompt=user_message,
             system_instruction=chat_instruction,
             history=history
@@ -254,12 +249,12 @@ def analytics_generator_node(state: AgentState) -> Dict[str, Any]:
         "best_month": "Month name"
     }}
     """
-    analytics_data = invoke_gemini_json(analytics_prompt)
+    analytics_data = get_destination_analytics(analytics_prompt)
 
     # Attach raw metadata
     analytics_data["raw_data"] = {
         "destination": destination,
-        "source": "AI Travel Market Intelligence (Qwen / OpenRouter)",
+        "source": "AI Travel Market Intelligence (OpenRouter Free Auto-Router)",
     }
 
     return {

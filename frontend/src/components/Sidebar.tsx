@@ -464,7 +464,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-[11px] text-slate-400 flex items-center justify-between">
         <div>
           <span className="text-slate-300 font-medium">Shaimon Rahman</span>
-          <span className="block text-[10px] text-slate-500">Qwen 2.5 & LangGraph</span>
+          <span className="block text-[10px] text-slate-500">OpenRouter Free & LangGraph</span>
         </div>
         <a
           href="https://www.linkedin.com/in/shaimonrahman"
