@@ -8,12 +8,10 @@ import {
   ExternalLink,
   Loader2,
   MapPin,
-  LogOut,
   Plane,
   Settings,
 } from 'lucide-react';
 import { TripSession, TripCreateInput } from '../types';
-import { useAuth } from '../context/AuthContext';
 import { SettingsModal } from './SettingsModal';
 
 interface SidebarProps {
@@ -52,9 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteTrip,
   onCreateTrip,
   isCreating,
-  onOpenAuth,
 }) => {
-  const { user, logout } = useAuth();
   const [showForm, setShowForm] = useState(trips.length === 0);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
@@ -431,37 +427,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
       </div>
-
-      {/* User Identity or Guest Mode */}
-      {user ? (
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/80 flex items-center justify-between text-xs">
-          <div className="min-w-0 pr-2">
-            <div className="font-semibold text-white truncate text-xs">{user.name || 'Tenant User'}</div>
-            <div className="text-[10px] text-slate-400 truncate">{user.email}</div>
-          </div>
-          <button
-            onClick={logout}
-            title="Sign Out of Session"
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-slate-700/80 hover:border-rose-500/30 text-[11px] transition shrink-0"
-          >
-            <LogOut className="h-3 w-3" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      ) : (
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/80 flex items-center justify-between text-xs">
-          <div>
-            <div className="font-semibold text-amber-300 text-xs">Guest Mode</div>
-            <div className="text-[10px] text-slate-400">1 free itinerary included</div>
-          </div>
-          <button
-            onClick={() => onOpenAuth?.('login')}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium transition shrink-0 shadow-sm"
-          >
-            <span>Sign In</span>
-          </button>
-        </div>
-      )}
 
       {/* Developer Footer */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-[11px] text-slate-400 flex items-center justify-between">
