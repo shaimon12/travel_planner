@@ -19,13 +19,29 @@ const apiClient = axios.create({
   timeout: 45000, // accommodate multi-agent LLM reasoning
 });
 
-// Axios Request Interceptor: Attach JWT Bearer Token
+// Axios Request Interceptor: Attach JWT Bearer Token & BYOK Custom Headers
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('travel_planner_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // BYOK (Bring Your Own Key) Custom LLM Overrides
+    const customApiKey = localStorage.getItem('customApiKey');
+    const customBaseUrl = localStorage.getItem('customBaseUrl');
+    const customModel = localStorage.getItem('customModel');
+
+    if (customApiKey && customApiKey.trim()) {
+      config.headers['X-API-Key'] = customApiKey.trim();
+    }
+    if (customBaseUrl && customBaseUrl.trim()) {
+      config.headers['X-Base-URL'] = customBaseUrl.trim();
+    }
+    if (customModel && customModel.trim()) {
+      config.headers['X-Model-Name'] = customModel.trim();
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

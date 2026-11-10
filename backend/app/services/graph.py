@@ -44,6 +44,11 @@ class AgentState(TypedDict, total=False):
     final_response: str
     error: Optional[str]
 
+    # BYOK Custom Model Credentials
+    x_api_key: Optional[str]
+    x_base_url: Optional[str]
+    x_model_name: Optional[str]
+
 # ==============================================================================
 # Node 1: Destination Validator & Weather Fetcher
 # ==============================================================================
@@ -121,6 +126,11 @@ def itinerary_generator_node(state: AgentState) -> Dict[str, Any]:
     dietary = state.get("dietary_restrictions", [])
     weather_report = state.get("weather_report", "Seasonal conditions.")
     flight_data = state.get("flight_data")
+
+    # BYOK Overrides
+    x_api_key = state.get("x_api_key")
+    x_base_url = state.get("x_base_url")
+    x_model_name = state.get("x_model_name")
 
     # If flight_data is not yet present and origin_city exists, run flight search
     if flight_data is None and origin_city:
@@ -200,7 +210,13 @@ You MUST output EXACTLY in this markdown format:
 * **💡 Local Secret:** A specific local tip.
 *(Repeat structure for all {duration} days)*
 """
-        response = invoke_llm(user_prompt, system_instruction=system_prompt)
+        response = invoke_llm(
+            prompt=user_prompt,
+            system_instruction=system_prompt,
+            x_api_key=x_api_key,
+            x_base_url=x_base_url,
+            x_model_name=x_model_name,
+        )
         return {
             "itinerary_output": response,
             "final_response": response,
@@ -226,7 +242,10 @@ The user is asking a follow-up question regarding their trip to {destination}.
         response = invoke_llm(
             prompt=user_message,
             system_instruction=chat_instruction,
-            history=history
+            history=history,
+            x_api_key=x_api_key,
+            x_base_url=x_base_url,
+            x_model_name=x_model_name,
         )
         return {
             "final_response": response,
@@ -241,6 +260,9 @@ def analytics_generator_node(state: AgentState) -> Dict[str, Any]:
     Generates estimated tourism trends and visitor demographics as structured JSON.
     """
     destination = state.get("destination", "Destination")
+    x_api_key = state.get("x_api_key")
+    x_base_url = state.get("x_base_url")
+    x_model_name = state.get("x_model_name")
     logger.info(f"[Node 4: Analytics Generator] Generating metrics for: {destination}")
 
     analytics_prompt = f"""
@@ -255,7 +277,12 @@ def analytics_generator_node(state: AgentState) -> Dict[str, Any]:
         "best_month": "Month name"
     }}
     """
-    analytics_data = get_destination_analytics(analytics_prompt)
+    analytics_data = get_destination_analytics(
+        prompt=analytics_prompt,
+        x_api_key=x_api_key,
+        x_base_url=x_base_url,
+        x_model_name=x_model_name,
+    )
 
     # Attach raw metadata
     analytics_data["raw_data"] = {

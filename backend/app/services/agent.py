@@ -30,6 +30,9 @@ def plan_new_trip(trip_params: Dict[str, Any]) -> Dict[str, Any]:
         "dietary_restrictions": trip_params.get("dietary_restrictions", []),
         "messages": [],
         "user_input": "",
+        "x_api_key": trip_params.get("x_api_key"),
+        "x_base_url": trip_params.get("x_base_url"),
+        "x_model_name": trip_params.get("x_model_name"),
     }
 
     result = run_agent_workflow(initial_state)
@@ -71,6 +74,9 @@ def handle_trip_chat(
         "weather_report": trip_params.get("weather_report", ""),
         "messages": chat_history,
         "user_input": user_message,
+        "x_api_key": trip_params.get("x_api_key"),
+        "x_base_url": trip_params.get("x_base_url"),
+        "x_model_name": trip_params.get("x_model_name"),
     }
 
     result = run_agent_workflow(state)
