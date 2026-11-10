@@ -42,12 +42,25 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     )
 
 # Configure Cross-Origin Resource Sharing (CORS) for React frontend
+# Explicitly allowing BYOK headers (X-API-Key, X-Base-URL, X-Model-Name) for preflight OPTIONS checks
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=[
+        "*",
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-Base-URL",
+        "X-Model-Name",
+        "x-api-key",
+        "x-base-url",
+        "x-model-name",
+    ],
+    expose_headers=["*"],
 )
 
 # Register API routes under /api

@@ -23,6 +23,42 @@ export const App: React.FC = () => {
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
+  // System / Manual Theme Engine (Defaults to system preference or Light mode)
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    const saved = localStorage.getItem('travel_planner_theme');
+    if (saved) {
+      return saved === 'dark';
+    }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+      localStorage.setItem('travel_planner_theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('travel_planner_theme', 'light');
+    }
+  }, [isDark]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('travel_planner_theme');
+      if (!saved) {
+        setIsDark(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
+  }, []);
+
+  const handleToggleTheme = () => {
+    setIsDark(prev => !prev);
+  };
+
   // Load trips on mount / when auth state changes
   useEffect(() => {
     if (isAuthenticated) {
@@ -218,12 +254,12 @@ export const App: React.FC = () => {
   // Splash Screen during auth initialization
   if (isAuthLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100">
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-14 w-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-600/30">
             <Compass className="h-8 w-8 text-indigo-400 animate-spin" />
           </div>
-          <div className="flex items-center space-x-2 text-xs text-slate-400">
+          <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
             <span>Validating authentication session...</span>
           </div>
@@ -234,7 +270,7 @@ export const App: React.FC = () => {
 
   // Progressive Onboarding: Unauthenticated users have direct access to the main workspace!
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans relative">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans relative">
       {/* Persistent Sidebar */}
       <Sidebar
         trips={trips}
@@ -244,6 +280,8 @@ export const App: React.FC = () => {
         onCreateTrip={handleCreateTrip}
         isCreating={isCreatingTrip}
         onOpenAuth={openAuth}
+        isDark={isDark}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Main Dual-View Workspace */}

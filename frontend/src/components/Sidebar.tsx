@@ -10,6 +10,8 @@ import {
   MapPin,
   Plane,
   Settings,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { TripSession, TripCreateInput } from '../types';
 import { SettingsModal } from './SettingsModal';
@@ -22,6 +24,8 @@ interface SidebarProps {
   onCreateTrip: (data: TripCreateInput) => Promise<void>;
   isCreating: boolean;
   onOpenAuth?: (mode?: 'login' | 'register') => void;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 }
 
 const INTEREST_OPTIONS = [
@@ -50,9 +54,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteTrip,
   onCreateTrip,
   isCreating,
+  isDark,
+  onToggleTheme,
 }) => {
   const [showForm, setShowForm] = useState(trips.length === 0);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Fallback theme handling if not provided by parent
+  const [internalDark, setInternalDark] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return true;
+  });
+
+  const effectiveIsDark = isDark !== undefined ? isDark : internalDark;
+
+  const handleToggleTheme = () => {
+    if (onToggleTheme) {
+      onToggleTheme();
+    } else {
+      const next = !effectiveIsDark;
+      setInternalDark(next);
+      if (next) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('travel_planner_theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('travel_planner_theme', 'light');
+      }
+    }
+  };
 
   // Form State
   const [travelerName, setTravelerName] = useState('Alex');
@@ -130,16 +162,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-80 md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0 select-none">
+    <aside className="w-80 md:w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 select-none text-slate-800 dark:text-slate-100 transition-colors duration-150">
       {/* Brand & New Trip Action */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow">
             🌍
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white leading-tight">AI Travel Planner</h2>
-            <p className="text-[11px] text-slate-400">Enterprise Multi-Agent Platform</p>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">AI Travel Planner</h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Enterprise Multi-Agent Platform</p>
           </div>
         </div>
 
@@ -147,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => setShowForm(!showForm)}
           className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
             showForm
-              ? 'bg-slate-800 text-slate-300'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30'
           }`}
         >
@@ -159,58 +191,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {showForm ? (
           /* New Trip Form */
-          <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs bg-slate-950/70 p-4 rounded-xl border border-slate-800/80">
-            <div className="flex items-center space-x-2 text-indigo-400 font-semibold mb-2">
+          <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs bg-slate-50 dark:bg-slate-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80">
+            <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-semibold mb-2">
               <Sparkles className="h-4 w-4" />
               <span>Configure Your Trip</span>
             </div>
 
             {formError && (
-              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">
+              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-[11px]">
                 {formError}
               </div>
             )}
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Traveler Name</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Traveler Name</label>
               <input
                 type="text"
                 value={travelerName}
                 onChange={e => setTravelerName(e.target.value)}
                 placeholder="e.g. Alex"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1 flex items-center justify-between">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex items-center justify-between">
                 <span>Origin City</span>
-                <span className="text-[10px] text-indigo-400 font-normal">Flight Booking Deals ✈️</span>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">Flight Booking Deals ✈️</span>
               </label>
               <div className="relative">
-                <Plane className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-500" />
+                <Plane className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={originCity}
                   onChange={e => setOriginCity(e.target.value)}
                   placeholder="e.g. Sydney, Australia or London"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Destination</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Destination</label>
               <div className="relative">
-                <MapPin className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-500" />
+                <MapPin className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={rawDestination}
                   onChange={e => setRawDestination(e.target.value)}
                   placeholder="e.g. Kyoto, Japan or Paris"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   required
                 />
               </div>
@@ -218,34 +250,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Start Date</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Duration (Days)</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Duration (Days)</label>
                 <input
                   type="number"
                   min="1"
                   max="30"
                   value={duration}
                   onChange={e => setDuration(Number(e.target.value))}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Budget</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Budget</label>
                 <select
                   value={budget}
                   onChange={e => setBudget(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="Shoestring">Shoestring</option>
                   <option value="Moderate">Moderate</option>
@@ -254,11 +286,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Style</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Style</label>
                 <select
                   value={travelType}
                   onChange={e => handleTravelTypeChange(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="Solo">Solo (1)</option>
                   <option value="Couple">Couple (2)</option>
@@ -269,7 +301,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1 flex items-center justify-between">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex items-center justify-between">
                 <span>Total Travelers</span>
                 <span className="text-[10px] text-slate-500">Min: {getMinGroupSize(travelType)}</span>
               </label>
@@ -279,29 +311,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 max="20"
                 value={groupSize}
                 onChange={e => setGroupSize(Number(e.target.value))}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             {travelType === 'Family' && (
-              <div className="p-2.5 bg-indigo-950/40 rounded-lg border border-indigo-500/20">
-                <label className="block text-slate-300 font-medium mb-1 flex items-center justify-between">
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg border border-indigo-200 dark:border-indigo-500/20">
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex items-center justify-between">
                   <span>Children/Infants Ages</span>
-                  <span className="text-[10px] text-indigo-400 font-normal">Family Customization</span>
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">Family Customization</span>
                 </label>
                 <input
                   type="text"
                   value={childrenAges}
                   onChange={e => setChildrenAges(e.target.value)}
                   placeholder="e.g., 2, 5 (or infant, 7)"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs"
                 />
               </div>
             )}
 
             {/* Interests Chips */}
             <div>
-              <label className="block text-slate-300 font-medium mb-1.5">Core Interests</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1.5">Core Interests</label>
               <div className="flex flex-wrap gap-1.5">
                 {INTEREST_OPTIONS.map(interest => {
                   const selected = interests.includes(interest);
@@ -313,7 +345,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className={`px-2 py-1 rounded-md text-[11px] font-medium transition ${
                         selected
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 text-slate-700'
                       }`}
                     >
                       {interest}
@@ -325,7 +357,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Dietary Chips */}
             <div>
-              <label className="block text-slate-300 font-medium mb-1.5">Dietary Restrictions</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1.5">Dietary Restrictions</label>
               <div className="flex flex-wrap gap-1.5">
                 {DIETARY_OPTIONS.map(d => {
                   const selected = dietary.includes(d);
@@ -337,7 +369,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className={`px-2 py-1 rounded-md text-[11px] font-medium transition ${
                         selected
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 text-slate-700'
                       }`}
                     >
                       {d}
@@ -368,14 +400,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           /* Trips History List */
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-400 px-1 mb-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 mb-1">
               <span>Trip Sessions ({trips.length})</span>
             </div>
 
             {trips.length === 0 ? (
-              <div className="text-center py-8 px-4 bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-slate-400 text-xs">
-                <Compass className="h-8 w-8 mx-auto text-slate-600 mb-2" />
-                <p className="font-medium text-slate-300">No active trips yet</p>
+              <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs">
+                <Compass className="h-8 w-8 mx-auto text-slate-400 dark:text-slate-600 mb-2" />
+                <p className="font-medium text-slate-700 dark:text-slate-300">No active trips yet</p>
                 <p className="text-[11px] text-slate-500 mt-1">Click "New Trip" to launch the AI concierge</p>
               </div>
             ) : (
@@ -387,16 +419,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onSelectTrip(trip.id)}
                     className={`group relative flex items-center justify-between p-3 rounded-xl cursor-pointer border transition-all ${
                       isActive
-                        ? 'bg-indigo-600/15 border-indigo-500/40 text-white shadow-sm'
-                        : 'bg-slate-950/50 border-slate-800/80 text-slate-300 hover:bg-slate-800/60 hover:border-slate-700'
+                        ? 'bg-indigo-50 border-indigo-300 text-indigo-950 dark:bg-indigo-600/15 dark:border-indigo-500/40 dark:text-white shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:bg-slate-950/50 dark:border-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:border-slate-700'
                     }`}
                   >
                     <div className="min-w-0 flex-1 pr-2">
                       <div className="flex items-center space-x-1.5 font-semibold text-xs truncate">
-                        <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                        <MapPin className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
                         <span className="truncate">{trip.title}</span>
                       </div>
-                      <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-1">
+                      <div className="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                         <span>{trip.duration}d</span>
                         <span>•</span>
                         <span>{trip.budget}</span>
@@ -414,11 +446,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           }
                         }}
                         title="Delete trip session"
-                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                      <ChevronRight className={`h-4 w-4 ${isActive ? 'text-indigo-400' : 'text-slate-600'}`} />
+                      <ChevronRight className={`h-4 w-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-600'}`} />
                     </div>
                   </div>
                 );
@@ -429,15 +461,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Developer Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-[11px] text-slate-400 flex items-center justify-between">
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950/60 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
         <div>
-          <span className="text-slate-300 font-medium">Shaimon Rahman</span>
+          <span className="text-slate-800 dark:text-slate-300 font-medium">Shaimon Rahman</span>
           <span className="block text-[10px] text-slate-500">OpenRouter Free & LangGraph</span>
         </div>
         <div className="flex items-center space-x-1.5">
           <button
+            onClick={handleToggleTheme}
+            className="p-1 rounded bg-white hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700/60 transition shadow-xs"
+            title={effectiveIsDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle light and dark theme"
+          >
+            {effectiveIsDark ? (
+              <Sun className="h-3 w-3 text-amber-400" />
+            ) : (
+              <Moon className="h-3 w-3 text-indigo-600" />
+            )}
+          </button>
+          <button
             onClick={() => setShowSettingsModal(true)}
-            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition"
+            className="p-1 rounded bg-white hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700/60 transition shadow-xs"
             title="Advanced / Developer Settings (BYOK)"
           >
             <Settings className="h-3 w-3" />
@@ -446,7 +490,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             href="https://www.linkedin.com/in/shaimonrahman"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 text-[10px] transition"
+            className="inline-flex items-center space-x-1 px-2 py-1 rounded bg-white hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 text-[10px] border border-slate-200 dark:border-slate-700/60 transition shadow-xs"
           >
             <span>LinkedIn</span>
             <ExternalLink className="h-3 w-3" />

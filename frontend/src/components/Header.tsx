@@ -25,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onDownloadItinerary,
 }) => {
   return (
-    <header className="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 flex items-center justify-between z-10">
+    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-6 flex items-center justify-between z-10">
       {/* Trip Information Header */}
       <div className="flex items-center space-x-4 min-w-0">
         <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
@@ -34,11 +34,11 @@ export const Header: React.FC<HeaderProps> = ({
         
         <div className="min-w-0">
           <div className="flex items-center space-x-2">
-            <h1 className="text-lg font-bold text-white truncate">
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">
               {trip ? trip.title : 'AI Travel Planner Pro'}
             </h1>
             {trip?.destination && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20 shrink-0">
                 <MapPin className="h-3 w-3 mr-1" />
                 {trip.origin_city ? `${trip.origin_city} ➔ ${trip.destination}` : trip.destination}
               </span>
@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {trip && (
-            <div className="flex items-center space-x-3 text-xs text-slate-400 mt-0.5 truncate">
+            <div className="flex items-center space-x-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
               <span>{trip.traveler_name}</span>
               <span>•</span>
               <span className="flex items-center">
@@ -72,13 +72,13 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center space-x-3 shrink-0">
         {trip && (
           <>
-            <div className="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center space-x-1">
+            <div className="bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center space-x-1">
               <button
                 onClick={() => onTabChange('chat')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   activeTab === 'chat'
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   activeTab === 'analytics'
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 <BarChart3 className="h-3.5 w-3.5" />
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onDownloadItinerary}
               title="Download full Markdown itinerary"
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Save Markdown</span>
