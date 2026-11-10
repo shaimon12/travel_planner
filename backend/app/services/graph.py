@@ -151,6 +151,19 @@ Do NOT format markdown tables, lists of flights, airline prices, or flight booki
 The system will display flight options automatically via the UI.
 If the user asks about flights, or on the initial trip generation, simply let them know that available live flight options from {origin_city} to {destination} are presented below in the interactive flight cards.
 
+**🌟 GOLDEN RULE FEW-SHOT EXEMPLAR (STRICT PREMIUM MARKDOWN FORMATTING):**
+You MUST match this exact level of detail, emoji placement, precise bolding, Google Maps linking, and structural polish for every day:
+
+---
+### Day 1: Historic Alleys & Sunset Gastronomy
+* **Morning:** Immerse yourself in cultural heritage at [Fushimi Inari Shrine](https://www.google.com/maps/search/?api=1&query=Kyoto+Fushimi+Inari+Shrine). Hike through the iconic thousand vermilion torii gates under cool morning shade.
+* **Lunch:** Savor seasonal handmade soba noodles at [Honke Owariya](https://www.google.com/maps/search/?api=1&query=Kyoto+Honke+Owariya) - Established in 1465, famous for 8-layer soba bowls (~$18).
+* **Afternoon:** Stroll the peaceful bamboo groves and tranquil Zen rock gardens of [Tenryu-ji Temple](https://www.google.com/maps/search/?api=1&query=Kyoto+Tenryu-ji+Temple) in the scenic Arashiyama district.
+* **Dinner:** Enjoy authentic charcoal-grilled multi-course dining at [Gion Karyo](https://www.google.com/maps/search/?api=1&query=Kyoto+Gion+Karyo) - Traditional machiya wooden townhouse ambience.
+* **🌙 Evening:** Wander through the lantern-lit stone alleys of [Pontocho Alley](https://www.google.com/maps/search/?api=1&query=Kyoto+Pontocho+Alley), stopping for matcha cocktails alongside the Kamogawa River.
+* **💡 Local Secret:** Skip the crowded main trail after the first 200m; take the quiet forested path on the right for unobstructed panoramic views and zero crowds.
+---
+
 **USER & TRIP CONTEXT:**
 - Traveler: {traveler}
 - Origin: {origin_city}
@@ -166,7 +179,7 @@ If the user asks about flights, or on the initial trip generation, simply let th
     if mode == "initial_plan":
         user_prompt = f"""
 Create a highly logistical, geo-optimized {duration}-day itinerary. Group activities by neighborhood to minimize travel time. Use the live weather to prioritize indoor vs. outdoor activities.
-Remember: DO NOT create markdown flight tables or list flight prices. The system will display flight options automatically via the UI.
+Remember: Follow the GOLDEN RULE FEW-SHOT EXEMPLAR strictly. DO NOT create markdown flight tables or list flight prices. The system will display flight options automatically via the UI.
 
 You MUST output EXACTLY in this markdown format:
 

@@ -10,9 +10,11 @@ import {
   MapPin,
   LogOut,
   Plane,
+  Settings,
 } from 'lucide-react';
 import { TripSession, TripCreateInput } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { SettingsModal } from './SettingsModal';
 
 interface SidebarProps {
   trips: TripSession[];
@@ -54,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [showForm, setShowForm] = useState(trips.length === 0);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Form State
   const [travelerName, setTravelerName] = useState('Alex');
@@ -466,16 +469,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-slate-300 font-medium">Shaimon Rahman</span>
           <span className="block text-[10px] text-slate-500">OpenRouter Free & LangGraph</span>
         </div>
-        <a
-          href="https://www.linkedin.com/in/shaimonrahman"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center space-x-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 text-[10px] transition"
-        >
-          <span>LinkedIn</span>
-          <ExternalLink className="h-3 w-3" />
-        </a>
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition"
+            title="Advanced / Developer Settings (BYOK)"
+          >
+            <Settings className="h-3 w-3" />
+          </button>
+          <a
+            href="https://www.linkedin.com/in/shaimonrahman"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center space-x-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 text-[10px] transition"
+          >
+            <span>LinkedIn</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
       </div>
+
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </aside>
   );
 };

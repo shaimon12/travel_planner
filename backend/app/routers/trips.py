@@ -1,6 +1,8 @@
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_optional
@@ -50,6 +52,97 @@ def create_trip(
         corrected_size = 2
     elif trip_in.travel_type in ["Family", "Friends"] and corrected_size < 3:
         corrected_size = 3
+
+    # =========================================================================
+    # 0. PostgreSQL / SQLite Semantic Cache Check (Last 48 Hours)
+    # Exact match: destination, duration, travel_type, group_size, budget
+    # =========================================================================
+    cutoff_time = datetime.utcnow() - timedelta(hours=48)
+    clean_dest = trip_in.raw_destination.strip()
+
+    cached_trip = (
+        db.query(TripSession)
+        .filter(
+            (func.lower(TripSession.raw_destination) == clean_dest.lower()) |
+            (func.lower(TripSession.destination) == clean_dest.lower()),
+            TripSession.duration == trip_in.duration,
+            TripSession.travel_type == trip_in.travel_type,
+            TripSession.group_size == corrected_size,
+            TripSession.budget == trip_in.budget,
+            TripSession.created_at >= cutoff_time,
+        )
+        .order_by(TripSession.created_at.desc())
+        .first()
+    )
+
+    # Check if cached trip contains an initial generated itinerary message
+    cached_itinerary_msg = None
+    if cached_trip and cached_trip.messages:
+        for m in cached_trip.messages:
+            if m.role == "assistant" and m.content and len(m.content) > 50:
+                cached_itinerary_msg = m
+                break
+
+    if cached_trip and cached_itinerary_msg:
+        # Clone cached trip directly, bypassing LLM completely
+        destination_name = cached_trip.destination or clean_dest
+        title = trip_in.title if trip_in.title and trip_in.title != "My Trip" else f"Trip to {destination_name}"
+        is_guest = current_user is None
+        user_id = current_user.id if current_user else None
+
+        new_trip = TripSession(
+            user_id=user_id,
+            is_guest=is_guest,
+            title=title,
+            traveler_name=trip_in.traveler_name,
+            origin_city=trip_in.origin_city or cached_trip.origin_city or "Sydney, Australia",
+            raw_destination=trip_in.raw_destination,
+            destination=destination_name,
+            start_date=trip_in.start_date or cached_trip.start_date,
+            duration=trip_in.duration,
+            budget=trip_in.budget,
+            travel_type=trip_in.travel_type,
+            group_size=corrected_size,
+            children_ages=trip_in.children_ages,
+            interests=trip_in.interests or cached_trip.interests or ["General Sightseeing"],
+            dietary_restrictions=trip_in.dietary_restrictions or cached_trip.dietary_restrictions or [],
+            status="active"
+        )
+        db.add(new_trip)
+        db.commit()
+        db.refresh(new_trip)
+
+        # Clone assistant message with itinerary & flight_data
+        cached_meta = dict(cached_itinerary_msg.meta or {})
+        cached_meta["cached"] = True
+        cached_meta["cached_from"] = cached_trip.id
+
+        new_message = Message(
+            trip_id=new_trip.id,
+            role="assistant",
+            content=cached_itinerary_msg.content,
+            meta=cached_meta
+        )
+        db.add(new_message)
+
+        # Clone destination analytics if available
+        if cached_trip.analytics:
+            ca = cached_trip.analytics
+            new_analytics = DestinationAnalytics(
+                trip_id=new_trip.id,
+                destination=destination_name,
+                visitors=ca.visitors,
+                growth=ca.growth,
+                satisfaction=ca.satisfaction,
+                top_demographic=ca.top_demographic,
+                best_month=ca.best_month,
+                raw_data=ca.raw_data
+            )
+            db.add(new_analytics)
+
+        db.commit()
+        db.refresh(new_trip)
+        return new_trip
 
     # Execute LangGraph Multi-Agent Workflow
     agent_output = plan_new_trip({
